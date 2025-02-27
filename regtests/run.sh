@@ -18,8 +18,9 @@
 # under the License.
 #
 # Run without args to run all tests, or single arg for single test.
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-export SPARK_VERSION=spark-3.5.3
+export SPARK_VERSION=spark-3.5.4
 export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
 
 if [ -z "${SPARK_HOME}" ]; then
@@ -52,7 +53,7 @@ cd ${REGTEST_HOME}
 
 if [ -z "${1}" ]; then
   loginfo 'Running all tests'
-  TEST_LIST="$(find t_* -wholename '*t_*/src/*')"
+  TEST_LIST="client/python/test $(find t_* -wholename '*t_*/src/*')"
 else
   loginfo "Running single test ${1}"
   TEST_LIST=${1}
@@ -87,6 +88,21 @@ export REGTEST_ROOT_BEARER_TOKEN=$token
 echo "Root bearer token: ${REGTEST_ROOT_BEARER_TOKEN}"
 
 for TEST_FILE in ${TEST_LIST}; do
+  # Special-case running all client pytests
+  if [ "${TEST_FILE}" == 'client/python/test' ]; then
+    loginfo "Starting pytest for entire client suite"
+    SCRIPT_DIR="$SCRIPT_DIR" python3 -m pytest ${TEST_FILE}
+    CODE=$?
+    if [[ $CODE -ne 0 ]]; then
+      logred "Test FAILED: ${TEST_FILE}"
+      NUM_FAILURES=$(( NUM_FAILURES + 1 ))
+    else
+      loggreen "Test SUCCEEDED: ${TEST_FILE}"
+    fi
+    continue
+  fi
+
+  # Handle individually-specified pytests
   TEST_SUITE=$(dirname $(dirname ${TEST_FILE}))
   TEST_SHORTNAME=$(basename ${TEST_FILE})
   if [[ "${TEST_SHORTNAME}" =~ .*.py ]]; then
@@ -95,7 +111,7 @@ for TEST_FILE in ${TEST_LIST}; do
       continue
     fi
     loginfo "Starting pytest ${TEST_SUITE}:${TEST_SHORTNAME}"
-    python3 -m pytest $TEST_FILE
+    SCRIPT_DIR="$SCRIPT_DIR" python3 -m pytest $TEST_FILE
     CODE=$?
     if [[ $CODE -ne 0 ]]; then
       logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"
@@ -105,6 +121,8 @@ for TEST_FILE in ${TEST_LIST}; do
     fi
     continue
   fi
+
+  # Assume anything else is open-ended executable-script based test
   if [[ "${TEST_SHORTNAME}" =~ .*.azure.*.sh ]]; then
       if  [ -z "${AZURE_CLIENT_ID}" ] || [ -z "${AZURE_CLIENT_SECRET}" ] || [ -z "${AZURE_TENANT_ID}" ] ; then
           loginfo "Azure tests not enabled, skip running test ${TEST_FILE}"

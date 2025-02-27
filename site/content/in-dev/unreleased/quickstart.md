@@ -51,6 +51,14 @@ If you plan to deploy Polaris inside [Docker](https://www.docker.com/), you'll n
 brew install --cask docker
 ```
 
+There could be a [Docker permission issues](https://github.com/apache/polaris/pull/971) related to seccomp configuration. To resolve these issues, set the `seccomp` profile to "unconfined" when running a container. For example:
+
+```shell
+docker run --security-opt seccomp=unconfined apache/polaris:latest
+```
+
+Note: Setting the seccomp profile to "unconfined" disables the default system call filtering, which may pose security risks. Use this configuration with caution, especially in production environments.
+
 Once installed, make sure Docker is running.
 
 #### From Source
@@ -97,7 +105,7 @@ To start using Polaris in Docker, launch Polaris while Docker is running:
 
 ```shell
 cd ~/polaris
-./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
 docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest
 ```
 
@@ -300,9 +308,9 @@ spark.sql("CREATE NAMESPACE IF NOT EXISTS quickstart_namespace")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema")
 spark.sql("USE NAMESPACE quickstart_namespace.schema")
 spark.sql("""
-	CREATE TABLE IF NOT EXISTS quickstart_table (
-		id BIGINT, data STRING
-	)
+CREATE TABLE IF NOT EXISTS quickstart_table (
+  id BIGINT, data STRING
+)
 USING ICEBERG
 """)
 ```

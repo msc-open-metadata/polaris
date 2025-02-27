@@ -33,14 +33,11 @@ cascade:
 | link:https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw[Slack]
 | Public chat, open to everybody
 
-| link:https://polaris-catalog.zulipchat.com/[Zulip]
-| Public chat, open to everybody
-
 | link:{{% ref "meetings" %}}[Community Meetings]
 | Upcoming, live and recorded Community Meetings
 
-| link:{{% ref "proposals" %}}[Proposals]
-| Proposals about bigger topics
+| link:{{% ref "proposals" %}}[Proposals and Roadmap]
+| Proposals for important features and Polaris Roadmap
 
 | link:https://github.com/apache/polaris[GitHub]
 | Development takes place here!

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,14 +27,14 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
@@ -58,12 +57,14 @@ import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CatalogRole;
+import org.apache.polaris.core.admin.model.Catalogs;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
@@ -73,6 +74,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.RestApi;
@@ -85,6 +87,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * @implSpec This test expects the server to be configured with the following features configured:
@@ -97,13 +102,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
  *     </ul>
  *     The server must also be configured to reject request body sizes larger than 1MB (1000000
  *     bytes).
+ *     <p>The server must also be configured with the following realms: POLARIS (default), and
+ *     OTHER.
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisApplicationIntegrationTest {
 
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
 
-  private static Path testDir;
   private static String realm;
 
   private static RestApi managementApi;
@@ -112,25 +118,22 @@ public class PolarisApplicationIntegrationTest {
   private static ClientCredentials clientCredentials;
   private static ClientPrincipal admin;
   private static String authToken;
+  private static URI baseLocation;
 
   private String principalRoleName;
   private String internalCatalogName;
 
   @BeforeAll
-  public static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal adminCredentials)
-      throws IOException {
+  public static void setup(
+      PolarisApiEndpoints apiEndpoints, ClientPrincipal adminCredentials, @TempDir Path tempDir) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    realm = endpoints.realm();
+    realm = endpoints.realmId();
     admin = adminCredentials;
     clientCredentials = adminCredentials.credentials();
     authToken = client.obtainToken(clientCredentials);
-
-    testDir = Path.of("build/test_data/iceberg/" + realm);
-    FileUtils.deleteQuietly(testDir.toFile());
-    Files.createDirectories(testDir);
-
     managementApi = client.managementApi(clientCredentials);
+    baseLocation = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(realm + "/");
   }
 
   @AfterAll
@@ -246,7 +249,7 @@ public class PolarisApplicationIntegrationTest {
             authToken,
             "warehouse",
             catalog,
-            "header." + REALM_HEADER,
+            "header." + endpoints.realmHeaderName(),
             realm));
     return sessionCatalog;
   }
@@ -437,9 +440,9 @@ public class PolarisApplicationIntegrationTest {
         Catalog.TypeEnum.EXTERNAL,
         principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
+            .setAllowedLocations(List.of(baseLocation.toString()))
             .build(),
-        "file://" + testDir.toFile().getAbsolutePath());
+        baseLocation.toString());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
         HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
@@ -447,9 +450,7 @@ public class PolarisApplicationIntegrationTest {
       sessionCatalog.createNamespace(sessionContext, ns);
       TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
       String location =
-          "file://"
-              + testDir.toFile().getAbsolutePath()
-              + "/testIcebergRegisterTableInExternalCatalog";
+          baseLocation.resolve("testIcebergRegisterTableInExternalCatalog").toString();
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =
@@ -483,19 +484,16 @@ public class PolarisApplicationIntegrationTest {
         Catalog.TypeEnum.EXTERNAL,
         principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
+            .setAllowedLocations(List.of(baseLocation.toString()))
             .build(),
-        "file://" + testDir.toFile().getAbsolutePath());
+        baseLocation.toString());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
         HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
       TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
-      String location =
-          "file://"
-              + testDir.toFile().getAbsolutePath()
-              + "/testIcebergUpdateTableInExternalCatalog";
+      String location = baseLocation.resolve("testIcebergUpdateTableInExternalCatalog").toString();
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       Types.NestedField col1 = Types.NestedField.of(1, false, "col1", Types.StringType.get());
@@ -535,20 +533,16 @@ public class PolarisApplicationIntegrationTest {
         Catalog.TypeEnum.EXTERNAL,
         principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
+            .setAllowedLocations(List.of(baseLocation.toString()))
             .build(),
-        "file://" + testDir.toFile().getAbsolutePath());
+        baseLocation.toString());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
         HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
       TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
-      String location =
-          "file://"
-              + testDir.toFile().getAbsolutePath()
-              + "/"
-              + "testIcebergDropTableInExternalCatalog";
+      String location = baseLocation.resolve("testIcebergDropTableInExternalCatalog").toString();
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =
@@ -588,7 +582,7 @@ public class PolarisApplicationIntegrationTest {
                           authToken,
                           "warehouse",
                           emptyEnvironmentVariable,
-                          "header." + REALM_HEADER,
+                          "header." + endpoints.realmHeaderName(),
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
@@ -655,6 +649,64 @@ public class PolarisApplicationIntegrationTest {
                   // asserts that one of those things happens.
                 }
               });
+    }
+  }
+
+  @Test
+  public void testNoRealmHeader() {
+    try (Response response =
+        managementApi
+            .request(
+                "v1/catalogs", Map.of(), Map.of(), Map.of("Authorization", "Bearer " + authToken))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
+      Catalogs roles = response.readEntity(Catalogs.class);
+      assertThat(roles.getCatalogs()).extracting(Catalog::getName).contains(internalCatalogName);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"POLARIS", "OTHER"})
+  public void testRealmHeaderValid(String realmId) {
+    String catalogName = client.newEntityName("testRealmHeaderValid" + realmId);
+    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
+    try (Response response =
+        managementApi
+            .request(
+                "v1/catalogs",
+                Map.of(),
+                Map.of(),
+                Map.of(
+                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), realmId))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
+      Catalogs catalogsList = response.readEntity(Catalogs.class);
+      if ("POLARIS".equals(realmId)) {
+        assertThat(catalogsList.getCatalogs()).extracting(Catalog::getName).contains(catalogName);
+      } else {
+        assertThat(catalogsList.getCatalogs()).isEmpty();
+      }
+    }
+  }
+
+  @Test
+  public void testRealmHeaderInvalid() {
+    try (Response response =
+        managementApi
+            .request(
+                "v1/catalogs",
+                Map.of(),
+                Map.of(),
+                Map.of(
+                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), "INVALID"))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Status.NOT_FOUND.getStatusCode());
+      assertThat(response.readEntity(ErrorResponse.class))
+          .extracting(ErrorResponse::code, ErrorResponse::type, ErrorResponse::message)
+          .containsExactly(
+              Status.NOT_FOUND.getStatusCode(),
+              "UnresolvableRealmContextException",
+              "Unknown realm: INVALID");
     }
   }
 }

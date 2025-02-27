@@ -23,19 +23,19 @@ import java.net.URI;
 
 /**
  * This class contains the most fundamental information for accessing Polaris APIs, such as the base
- * URI and realm ID and provides methods for obtaining Icenberg REST API and Polaris Management
+ * URI and realm ID and provides methods for obtaining Iceberg REST API and Polaris Management
  * endpoints.
  */
 public final class PolarisApiEndpoints implements Serializable {
 
-  public static String REALM_HEADER = "realm";
-
   private final URI baseUri;
-  private final String realm;
+  private final String realmId;
+  private final String realmHeaderName;
 
-  public PolarisApiEndpoints(URI baseUri, String realm) {
+  public PolarisApiEndpoints(URI baseUri, String realmId, String realmHeaderName) {
     this.baseUri = baseUri;
-    this.realm = realm;
+    this.realmId = realmId;
+    this.realmHeaderName = realmHeaderName;
   }
 
   public URI catalogApiEndpoint() {
@@ -46,7 +46,11 @@ public final class PolarisApiEndpoints implements Serializable {
     return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
   }
 
-  public String realm() {
-    return realm;
+  public String realmId() {
+    return realmId;
+  }
+
+  public String realmHeaderName() {
+    return realmHeaderName;
   }
 }
