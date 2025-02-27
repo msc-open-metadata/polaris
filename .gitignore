@@ -92,3 +92,7 @@ hs_err_pid*
 
 # macOS
 *.DS_Store
+
+.factorypath
+.settings
+bin

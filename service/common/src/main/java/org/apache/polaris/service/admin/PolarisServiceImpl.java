@@ -37,6 +37,7 @@ import org.apache.polaris.core.admin.model.CatalogRoles;
 import org.apache.polaris.core.admin.model.Catalogs;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
+import org.apache.polaris.core.admin.model.CreateFunctionRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
@@ -57,6 +58,7 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ViewGrant;
+
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.RealmContext;
@@ -71,6 +73,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
+import org.apache.polaris.service.admin.api.PolarisFunctionsApiService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +82,8 @@ import org.slf4j.LoggerFactory;
 public class PolarisServiceImpl
     implements PolarisCatalogsApiService,
         PolarisPrincipalsApiService,
-        PolarisPrincipalRolesApiService {
+        PolarisPrincipalRolesApiService,
+       PolarisFunctionsApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
 
   private final PolarisEntityManager entityManager;
@@ -688,4 +692,21 @@ public class PolarisServiceImpl
     GrantResources grantResources = new GrantResources(grantList);
     return Response.ok(grantResources).build();
   }
+
+  /** From {@link org.apache.polaris.service.admin.api.PolarisFunctionsApiService} */
+  @Override
+  public Response listFunctions(RealmContext realContext, SecurityContext securityContext) {
+    return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+  }
+
+  /** From {@link org.apache.polaris.service.admin.api.PolarisFunctionsApiService} */
+  @Override
+    public Response createFunction(
+        CreateFunctionRequest request,
+        RealmContext realmContext,
+        SecurityContext securityContext) {
+            LOGGER.info("Creating new function {foo}", request.getFunction());
+            return Response.status(Response.Status.CREATED).build();
+    }
+
 }

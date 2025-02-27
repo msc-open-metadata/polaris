@@ -753,6 +753,41 @@ paths:
         404:
           description: "The catalog or the role does not exist"
 
+# Additional endpoints --------------------------------------------------
+  /functions:
+    get:
+      operationId: listFunctions
+      description: List all functions in this polaris service
+      responses:
+        200:
+          description: List of functions in the polaris service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Functions"
+        403:
+          description: "The caller does not have permission to list function details"
+    post:
+      operationId: createFunction
+      description: Add a new Function
+      requestBody:
+        description: The Function to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFunctionRequest"
+      responses:
+        201:
+          description: "Successful response"
+        403:
+          description: "The caller does not have permission to create a functionp"
+        404:
+          description: "The function does not exist"
+        409:
+          description: "A function with the specified name already exists"
+
+
 components:
   securitySchemes:
     OAuth2:
@@ -1346,3 +1381,48 @@ components:
             $ref: "#/components/schemas/GrantResource"
       required:
         - grants
+# Function components ------------------------------------
+    Functions:
+          type: object
+          description: A list of registered functions
+          properties:
+            functions:
+              type: array
+              items:
+                $ref: "#/components/schemas/Function"
+          required:
+            - functions
+
+    CreateFunctionRequest:
+          type: object
+          description: Request to create a new function
+          properties:
+            function:
+              $ref: "#/components/schemas/Function"
+          required:
+            - function
+
+    Function:
+          type: object
+          description: A registered function object.
+          properties:
+            name:
+              type: string
+              description: The name of the function
+            body:
+              type: string
+              description: The function body (e.g., the SQL or logic implementation)
+            createTimestamp:
+              type: integer
+              format: int64
+              description: The time the function was created, in milliseconds since epoch
+            lastUpdateTimestamp:
+              type: integer
+              format: "int64"
+              description: The last update time represented as unix epoch timestamp in milliseconds
+            entityVersion:
+              type: integer
+              description: The version of the function object used to determine if the function metadata has changed
+          required:
+            - name
+            - body
