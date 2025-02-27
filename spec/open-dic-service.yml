@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: Polaris Extended Management Service
+  version: 0.0.2
+  description: |
+    Extended API for Apache Polaris, including support for additional object types and management operations.
+servers:
+  - url: "{scheme}://{host}/api/management/v1"
+    description: Polaris API Server
+    variables:
+      scheme:
+        description: Protocol (http or https)
+        default: https
+      host:
+        description: Host address
+        default: localhost
+security:
+  - OAuth2: []
+
+paths:
+
+  /{object}/create:
+    post:
+      tags:
+        - Object DDL
+      operationId: createObject
+      description: Create a new object in Polaris
+      parameters:
+        - name: object
+        - required: true
+        - schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateObjectRequest"
+      responses:
+        201:
+          description: Object created successfully
+        400:
+          description: Invalid request data
+
+  /{object}/show:
+    get:
+      tags:
+          - Object DDL
+      operationId: showObject
+      description: Retrieve metadata for an object
+      parameters:
+        - name: object
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Object metadata retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectMetadata"
+        404:
+          description: Object not found
+  /sync:
+    post:
+      tags:
+        - Synchronize
+      operationId: syncObjects
+      description: Sync all objects to a requesting database system
+      responses:
+        200:
+          description: Sync completed successfully
+        500:
+          description: Internal error
+          
+  /udo/define:
+    post:
+      tags:
+        - UDO
+      operationId: addUDO
+      description: Add a user-defined object (UDO)
+      requestBody:
+        required: true
+      responses:
+        201:
+          description: UDO created successfully
+        400:
+          description: Invalid request data
+
+components:
+  schemas:
+    CreateObjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        arguments:
+          type: object
+          additionalProperties:
+            type: string
+    ObjectMetadata:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        details:
+          type: object
+          additionalProperties:
+            type: string
