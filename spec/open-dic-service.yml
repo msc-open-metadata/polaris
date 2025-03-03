@@ -5,7 +5,7 @@ info:
   description: |
     Extended API for Apache Polaris, including support for additional object types and management operations.
 servers:
-  - url: "{scheme}://{host}/api/management/v1"
+  - url: "{scheme}://{host}/api/opendic/v1"
     description: Polaris API Server
     variables:
       scheme:
@@ -18,13 +18,28 @@ security:
   - OAuth2: []
 
 paths:
-
-  /{object}/create:
+  /objects:
+    get:
+      tags:
+        - Object DDL
+      operationId: listObjects
+      description: List all objects in Open dictionary metadata object
+      responses:
+        200:
+          description: Object list retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ObjectMetadata"
+        404:
+          description: Object not found
     post:
       tags:
         - Object DDL
       operationId: createObject
-      description: Create a new object in Polaris
+      description: Create a new Open dictionary metadata object
       parameters:
         - name: object
         - required: true
@@ -42,12 +57,12 @@ paths:
         400:
           description: Invalid request data
 
-  /{object}/show:
+  /objects/{object}:
     get:
       tags:
-          - Object DDL
+        - Object DDL
       operationId: showObject
-      description: Retrieve metadata for an object
+      description: Retrieve objects of type {object} for an object
       parameters:
         - name: object
           in: path
@@ -63,18 +78,19 @@ paths:
                 $ref: "#/components/schemas/ObjectMetadata"
         404:
           description: Object not found
-  /sync:
+
+  objects/{object}/pull:
     post:
       tags:
         - Synchronize
-      operationId: syncObjects
-      description: Sync all objects to a requesting database system
+      operationId: spullObject
+      description: Puill all objects of type {object} to a requesting database system
       responses:
         200:
-          description: Sync completed successfully
+          description: Pull completed successfully
         500:
           description: Internal error
-          
+
   /udo/define:
     post:
       tags:

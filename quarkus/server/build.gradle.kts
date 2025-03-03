@@ -39,6 +39,14 @@ dependencies {
     runtimeOnly(project(":polaris-eclipselink"))
   }
 
+  /*opendic api extension:*/
+  if (project.hasProperty("includeOpendic")) {
+    implementation(project(":polaris-extension-opendic-api-model"))
+    implementation(project(":polaris-extension-opendic-api-service"))
+    implementation(project(":polaris-extension-opendic-impl"))
+
+  }
+
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")

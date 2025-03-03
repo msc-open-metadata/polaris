@@ -57,6 +57,14 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   polarisProject(name as String, file(directory as String))
 }
 
+val includeOpendic = startParameter.projectProperties["includeOpendic"]?.toBoolean() ?: false
+
+if (includeOpendic) {
+    loadProperties(file("extension/opendic/project.opendic.properties")).forEach { name, directory ->
+        polarisProject(name as String, file(directory as String))
+    }
+}
+
 pluginManagement {
   repositories {
     mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
