@@ -86,13 +86,14 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -337,7 +338,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       }
 
       @Override
-      public Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
+      public Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
           RealmContext realmContext) {
         return () -> polarisContext.getMetaStore();
       }
@@ -354,12 +355,12 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
       @Override
       public Map<String, PrincipalSecretsResult> bootstrapRealms(
-          List<String> realms, RootCredentialsSet rootCredentialsSet) {
+          Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
         throw new NotImplementedException("Bootstrapping realms is not supported");
       }
 
       @Override
-      public void purgeRealms(List<String> realms) {
+      public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
         throw new NotImplementedException("Purging realms is not supported");
       }
     };
