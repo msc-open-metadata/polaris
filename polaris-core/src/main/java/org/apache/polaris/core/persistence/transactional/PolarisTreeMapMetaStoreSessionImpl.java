@@ -42,7 +42,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
-public class PolarisTreeMapMetaStoreSessionImpl extends TransactionalPersistence {
+public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPersistence {
 
   // the TreeMap store to use
   private final PolarisTreeMapStore store;
@@ -214,7 +214,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends TransactionalPersistence
   /** {@inheritDoc} */
   @Override
   public @Nullable PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     return this.store.getSliceEntities().read(this.store.buildKeyComposite(catalogId, entityId));
   }
 
