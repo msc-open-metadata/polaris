@@ -19,6 +19,7 @@
 
 plugins {
   id("polaris-server")
+  id("java-test-fixtures")
   alias(libs.plugins.jandex)
 }
 
@@ -27,6 +28,7 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-service-common"))
   implementation(project(":polaris-extension-opendic-api-model")) /* TODO */
   implementation(project(":polaris-extension-opendic-api-service")) /* TODO */
 
@@ -89,44 +91,6 @@ dependencies {
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
-
-  testImplementation(platform(libs.junit.bom))
-  testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(libs.assertj.core)
-  testImplementation(libs.mockito.core)
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
-  testImplementation(libs.logback.classic)
-
-  testFixturesImplementation(project(":polaris-core"))
-  testFixturesImplementation(project(":polaris-api-management-model"))
-  testFixturesImplementation(project(":polaris-api-management-service"))
-  testFixturesImplementation(project(":polaris-api-iceberg-service"))
-
-  testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
-  testFixturesImplementation(libs.jakarta.annotation.api)
-  testFixturesImplementation(libs.jakarta.ws.rs.api)
-
-  testFixturesImplementation(platform(libs.quarkus.bom))
-  testFixturesImplementation("io.quarkus:quarkus-rest-client")
-  testFixturesImplementation("io.quarkus:quarkus-rest-client-jackson")
-
-  testFixturesImplementation(platform(libs.iceberg.bom))
-  testFixturesImplementation("org.apache.iceberg:iceberg-api")
-  testFixturesImplementation("org.apache.iceberg:iceberg-core")
-  testFixturesImplementation("org.apache.iceberg:iceberg-aws")
-
-  testFixturesImplementation(platform(libs.google.cloud.storage.bom))
-  testFixturesImplementation("com.google.cloud:google-cloud-storage")
-  testFixturesImplementation(platform(libs.awssdk.bom))
-  testFixturesImplementation("software.amazon.awssdk:sts")
-  testFixturesImplementation("software.amazon.awssdk:iam-policy-builder")
-  testFixturesImplementation("software.amazon.awssdk:s3")
-
-  testFixturesImplementation(platform(libs.azuresdk.bom))
-  testFixturesImplementation("com.azure:azure-core")
-  testFixturesImplementation("com.azure:azure-storage-blob")
-  testFixturesImplementation("com.azure:azure-storage-file-datalake")
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
