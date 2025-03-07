@@ -32,10 +32,10 @@ dependencies {
 }
 
 openApiGenerate {
-  inputSpec = "$rootDir/spec/open-dic-service.yml" /* TODO */
+  inputSpec = "$rootDir/extension/opendic/spec/open-dic-service.yml" /* TODO */
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
-  modelPackage = "org.apache.polaris.extension.opendic.opendic-impl.model" /* TODO */
+  modelPackage = "org.apache.polaris.extension.opendic.model" /* TODO */
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"

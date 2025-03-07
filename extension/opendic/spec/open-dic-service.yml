@@ -35,16 +35,34 @@ paths:
                   $ref: "#/components/schemas/ObjectMetadata"
         404:
           description: Object not found
+
+  /objects/{name}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Object DDL
+      operationId: showObject
+      description: Retrieve objects of type {object} for an object
+      responses:
+        200:
+          description: Object metadata retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectMetadata"
+        404:
+          description: Object not found
+
     post:
       tags:
         - Object DDL
       operationId: createObject
-      description: Create a new Open dictionary metadata object
-      parameters:
-        - name: object
-        - required: true
-        - schema:
-            type: string
+      description: Create a new Open dictionary metadata object of type {Object}
       requestBody:
         required: true
         content:
@@ -57,29 +75,13 @@ paths:
         400:
           description: Invalid request data
 
-  /objects/{object}:
-    get:
-      tags:
-        - Object DDL
-      operationId: showObject
-      description: Retrieve objects of type {object} for an object
-      parameters:
-        - name: object
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: Object metadata retrieved
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ObjectMetadata"
-        404:
-          description: Object not found
-
-  objects/{object}/pull:
+  /objects/{name}/pull:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
     post:
       tags:
         - Synchronize
@@ -91,19 +93,20 @@ paths:
         500:
           description: Internal error
 
-  /udo/define:
-    post:
-      tags:
-        - UDO
-      operationId: addUDO
-      description: Add a user-defined object (UDO)
-      requestBody:
-        required: true
-      responses:
-        201:
-          description: UDO created successfully
-        400:
-          description: Invalid request data
+  # Andreas: Consider moving to POST at /objects
+  # /udo/define:
+  #   post:
+  #     tags:
+  #       - UDO
+  #     operationId: addUDO
+  #     description: Add a user-defined object (UDO)
+  #     requestBody:
+  #       required: true
+  #     responses:
+  #       201:
+  #         description: UDO created successfully
+  #       400:
+  #         description: Invalid request data
 
 components:
   schemas:
