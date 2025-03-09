@@ -21,9 +21,9 @@ paths:
   /objects:
     get:
       tags:
-        - Object DDL
+        - Objects
       operationId: listObjects
-      description: List all objects in Open dictionary metadata object
+      description: List all defined object types
       responses:
         200:
           description: Object list retrieved
@@ -35,6 +35,18 @@ paths:
                   $ref: "#/components/schemas/ObjectMetadata"
         404:
           description: Object not found
+    post:
+      tags:
+        - Objects
+      operationId: defineObject
+      description: Define a new user-defined object (UDO)
+      requestBody:
+        required: true
+      responses:
+        201:
+          description: UDO created successfully
+        400:
+          description: Invalid request data
 
   /objects/{name}:
     parameters:
@@ -47,7 +59,7 @@ paths:
       tags:
         - Object DDL
       operationId: showObject
-      description: Retrieve objects of type {object} for an object
+      description: Retrieve a list of objects of type {name}
       responses:
         200:
           description: Object metadata retrieved
@@ -75,58 +87,228 @@ paths:
         400:
           description: Invalid request data
 
-  /objects/{name}/pull:
+
+  /objects/{name}/{platform}:
     parameters:
       - name: name
         in: path
         required: true
         schema:
           type: string
-    post:
+      - name: platform
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
       tags:
-        - Synchronize
-      operationId: spullObject
-      description: Puill all objects of type {object} to a requesting database system
+       - Synchrize
+       - Platforms
+      operationId: getPlatformMappingForObject
       responses:
         200:
-          description: Pull completed successfully
+          description: The mapping from UDO with name {name} to {platform}.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformMapping"
+        404:
+          description: Object not found or platform mapping not found for object.
+
+    post:
+      tags:
+        - Synchrize
+        - Platforms
+      operationId: createPlatformMappingForObject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlatformMappingRequest"
+      responses:
+        201:
+          description: Platform mapping created successfully
+        400:
+          description: Invalid request data
+        409:
+          description: Platform mapping already exists for object
+
+    /objects/{name}/platforms:
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+
+      get:
+        tags:
+          - Platforms
+        operationId: listPlatformsForObject
+        description: List all platforms for object {name}
+        responses:
+          200:
+            description: A list of platforms for object {name}
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/PlatformMappings"
+
+          404:
+            description: Object not found
+
+  /objects/{name}/{platform}/pull:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: platform
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Synchronize
+      operationId: pullObject
+      description: Pull all objects of type {name} to a the request {platform} system
+      responses:
+        200:
+          description: A list of objects of type {name} with a platform mapping for {platform}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Catalogs"
+        404:
+          description: Object or platform mapping not found
         500:
           description: Internal error
 
-  # Andreas: Consider moving to POST at /objects
-  # /udo/define:
-  #   post:
-  #     tags:
-  #       - UDO
-  #     operationId: addUDO
-  #     description: Add a user-defined object (UDO)
-  #     requestBody:
-  #       required: true
-  #     responses:
-  #       201:
-  #         description: UDO created successfully
-  #       400:
-  #         description: Invalid request data
 
 components:
   schemas:
+    Objects:
+      type: object
+      description: A list of object definitions
+      properties:
+        objects:
+          type: array
+          items:
+            $ref: "#/components/schemas/Object"
+      required:
+        - objects
+
     CreateObjectRequest:
       type: object
+      description: Request to create a new object of an existing type.
       properties:
-        name:
-          type: string
-        arguments:
-          type: object
-          additionalProperties:
-            type: string
-    ObjectMetadata:
+        object:
+          $ref: "#/components/schemas/Object"
+      required:
+        - object
+
+    PullObject:
       type: object
+      description: Request to pull an object of an existing type.
       properties:
-        name:
-          type: string
+        object:
+          $ref: "#/components/schemas/Objects"
+        platformMapping:
+          $ref: "#/components/schemas/PlatformMapping"
+
+    Object:
+      type: object
+      description: A user defined object containing a list of properties provided during its definition.
+        To make the objects of this type usable from a platform provide a mapping from the specification provided on object definiton
+        to the equivalent DDL syntax arguements expected by that platform (Use /api/opendic/v1/objects/{object}/platform)
+      properties:
         type:
           type: string
-        details:
+          description: The type of the object.
+          example: Function
+        name:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+          description: The name of the object
+        properties:
           type: object
+          properties:
           additionalProperties:
             type: string
+        createTimestamp:
+          type: integer
+          format: "int64"
+          description: The creation time represented as unix epoch timestamp in milliseconds
+        lastUpdateTimestamp:
+          type: integer
+          format: "int64"
+          description: The last update time represented as unix epoch timestamp in milliseconds
+        entityVersion:
+          type: integer
+          description: The version of the catalog object used to determine if the catalog metadata has changed
+      required:
+        - name
+        - type
+
+    PlatformMappings:
+      type: array
+      items:
+        $ref: "#/components/schemas/PlatformMapping"
+      description: A list of supported platforms.
+
+    PlatformMapping:
+      type: object
+      description: A supported platform.
+      example: Snowflake
+      properties:
+        platformName:
+          type: string
+          enum:
+            - SNOWFLAKE
+            - SPARK
+          description: The name of the platform
+        objectType:
+          type: string
+          description: The type of the object. Examples - Function, User, Role, Policy
+      required:
+        - name
+      discriminator:
+        propertyName: storageType
+        mapping:
+          SNOWFLAKE: "#/components/schemas/SnowflakePlatformMapping"
+          SPARK: "#/components/schemas/SparkPlatformMapping"
+
+    SnowflakePlatformMapping:
+      type: object
+      description: The mapping details for the Snowflake platform.
+      properties:
+        jsonMapping:
+          type: object
+          additionalProperties: true
+        required:
+          - jsonMapping
+
+    SparkPlatformMapping:
+      type: object
+      description: The mapping details for the Spark platform.
+      properties:
+        jsonMapping:
+          type: object
+          additionalProperties: true
+        required:
+          - jsonMapping
+
+    CreatePlatformMappingRequest:
+      type: object
+      description: The request body for creating a platform mapping.
+      properties:
+        platformMapping:
+          $ref: "#/components/schemas/PlatformMapping"
