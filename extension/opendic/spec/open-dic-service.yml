@@ -21,27 +21,31 @@ paths:
   /objects:
     get:
       tags:
-        - Objects
-      operationId: listObjects
+        - All Udos
+      operationId: listUdoTypes
       description: List all defined object types
       responses:
         200:
-          description: Object list retrieved
+          description: Udo list retrieved
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Object"
+                  $ref: "#/components/schemas/Udo"
         404:
-          description: Object not found
+          description: Udo not found
     post:
       tags:
-        - Objects
-      operationId: defineObject
+        - All Udos
+      operationId: defineUdo
       description: Define a new user-defined object (UDO)
       requestBody:
         required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DefineUdoRequest"
       responses:
         201:
           description: UDO created successfully
@@ -57,36 +61,61 @@ paths:
           type: string
     get:
       tags:
-        - Object DDL
-      operationId: showObject
+        - Udo DDL
+      operationId: listUdoObjects
       description: Retrieve a list of objects of type {name}
       responses:
         200:
-          description: Object metadata retrieved
+          description: Udo metadata retrieved
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Object"
+                $ref: "#/components/schemas/Udo"
         404:
-          description: Object not found
+          description: Udo not found
 
     post:
       tags:
-        - Object DDL
-      operationId: createObject
-      description: Create a new Open dictionary metadata object of type {Object}
+        - Udo DDL
+      operationId: createUdo
+      description: Create a new Open dictionary metadata object of type {name}
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateObjectRequest"
+              $ref: "#/components/schemas/CreateUdoRequest"
       responses:
         201:
-          description: Object created successfully
+          description: Udo created successfully
         400:
           description: Invalid request data
 
+  /objects/{name}/platforms:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags:
+        - Platforms Mappings
+      operationId: listPlatformsForUdo
+      description: List all platforms for object {name}
+      responses:
+        200:
+          description: A list of platforms for object {name}
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformMappings"
+
+        404:
+          description: Udo not found
 
   /objects/{name}/{platform}:
     parameters:
@@ -103,9 +132,9 @@ paths:
 
     get:
       tags:
-       - Synchrize
-       - Platforms
-      operationId: getPlatformMappingForObject
+        - Platform Mappings
+      operationId: getPlatformMappingForUdo
+      description: GET function/snowflake -- {name:func_name, lang:language...}
       responses:
         200:
           description: The mapping from UDO with name {name} to {platform}.
@@ -114,13 +143,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/PlatformMapping"
         404:
-          description: Object not found or platform mapping not found for object.
+          description: Udo not found or platform mapping not found for object.
 
     post:
       tags:
-        - Synchrize
-        - Platforms
-      operationId: createPlatformMappingForObject
+        - Platform Mappings
+      operationId: createPlatformMappingForUdo
+      description: POST objects/function/snowflake
       requestBody:
         required: true
         content:
@@ -134,32 +163,6 @@ paths:
           description: Invalid request data
         409:
           description: Platform mapping already exists for object
-
-    /objects/{name}/platforms:
-      parameters:
-        - name: name
-          in: path
-          required: true
-          schema:
-            type: string
-
-      get:
-        tags:
-          - Platforms
-        operationId: listPlatformsForObject
-        description: List all platforms for object {name}
-        responses:
-          200:
-            description: A list of platforms for object {name}
-            content:
-              application/json:
-                schema:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/PlatformMappings"
-
-          404:
-            description: Object not found
 
   /objects/{name}/{platform}/pull:
     parameters:
@@ -176,53 +179,69 @@ paths:
     get:
       tags:
         - Synchronize
-      operationId: pullObject
-      description: Pull all objects of type {name} to a the request {platform} system
+      operationId: pullUdo
+      description: Pull all objects of type {name} to a the request {platform} system as sql dump. GET objects/function/snowflake/pull RETURNS {statements:[CREATE OR REPLACE FUNCTION ..., ]}
       responses:
         200:
           description: A list of objects of type {name} with a platform mapping for {platform}
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Objects"
+                $ref: "#/components/schemas/PullStatements"
         404:
-          description: Object or platform mapping not found
+          description: Udo or platform mapping not found
         500:
           description: Internal error
 
-
 components:
   schemas:
-    Objects:
+    Udos:
       type: object
       description: A list of object definitions
       properties:
         objects:
           type: array
           items:
-            $ref: "#/components/schemas/Object"
+            $ref: "#/components/schemas/Udo"
       required:
         - objects
 
-    CreateObjectRequest:
+    CreateUdoRequest:
       type: object
       description: Request to create a new object of an existing type.
       properties:
         object:
-          $ref: "#/components/schemas/Object"
+          $ref: "#/components/schemas/Udo"
       required:
         - object
 
-    PullObject:
+    DefineUdoRequest:
       type: object
-      description: Request to pull an object of an existing type.
+      description: Request to define a new object.
       properties:
-        object:
-          $ref: "#/components/schemas/Objects"
+        udoType:
+          type: string
+          description: The type of the object.
+          example: Function
+        properties:
+          type: object
+          description: The properties of the object.
+          example: { language: python, args: dict, ownerId: int }
+          additionalProperties:
+            type: string
+      required:
+        - object
+
+    PullUdo:
+      type: object
+      description: Request to pull all UDO objects of an existing type.
+      properties:
+        Udos:
+          $ref: "#/components/schemas/Udos"
         platformMapping:
           $ref: "#/components/schemas/PlatformMapping"
 
-    Object:
+    Udo:
       type: object
       description: A user defined object containing a list of properties provided during its definition.
         To make the objects of this type usable from a platform provide a mapping from the specification provided on object definiton
@@ -238,11 +257,9 @@ components:
           maxLength: 256
           pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
           description: The name of the object
-        properties:
+        props:
           type: object
-          properties:
-          additionalProperties:
-            type: string
+          additionalProperties: true
         createTimestamp:
           type: integer
           format: "int64"
@@ -267,9 +284,9 @@ components:
     PlatformMapping:
       type: object
       description: A supported platform.
-      example: Snowflake
       properties:
         platformName:
+          example: SNOWFLAKE
           type: string
           enum:
             - SNOWFLAKE
@@ -281,7 +298,7 @@ components:
       required:
         - name
       discriminator:
-        propertyName: storageType
+        propertyName: platformName
         mapping:
           SNOWFLAKE: "#/components/schemas/SnowflakePlatformMapping"
           SPARK: "#/components/schemas/SparkPlatformMapping"
@@ -293,8 +310,9 @@ components:
         jsonMapping:
           type: object
           additionalProperties: true
-        required:
-          - jsonMapping
+          example: { "todo": "actual example", "name": "function_name", "def": "as", "language": "lang" }
+      required:
+        - jsonMapping
 
     SparkPlatformMapping:
       type: object
@@ -303,8 +321,9 @@ components:
         jsonMapping:
           type: object
           additionalProperties: true
-        required:
-          - jsonMapping
+          example: { "todo": "concrete example", "name": "function_name", "def": "as", "language": "lang" }
+      required:
+        - jsonMapping
 
     CreatePlatformMappingRequest:
       type: object
@@ -312,3 +331,23 @@ components:
       properties:
         platformMapping:
           $ref: "#/components/schemas/PlatformMapping"
+
+    PullStatements:
+      type: object
+      description: A dump of SQL statements that that creates or replaces object in a specific platform.
+      properties:
+        statements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Statement"
+      required:
+        - statements
+
+    Statement:
+      type: object
+      description: An SQL statement that that creates or replaces object in a specific platform
+      properties:
+        def:
+          type: string
+      required:
+        - def
