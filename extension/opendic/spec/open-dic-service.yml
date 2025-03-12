@@ -32,7 +32,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ObjectMetadata"
+                  $ref: "#/components/schemas/Object"
         404:
           description: Object not found
     post:
@@ -66,7 +66,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ObjectMetadata"
+                $ref: "#/components/schemas/Object"
         404:
           description: Object not found
 
@@ -184,7 +184,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Catalogs"
+                $ref: "#/components/schemas/Objects"
         404:
           description: Object or platform mapping not found
         500:
