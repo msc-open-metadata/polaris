@@ -31,10 +31,9 @@ import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -80,7 +79,6 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -98,6 +96,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -140,9 +139,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-@QuarkusTest
-@TestProfile(BasePolarisCatalogTest.Profile.class)
-public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
+public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -195,6 +192,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
+  @Nullable
+  protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
+
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
@@ -212,7 +212,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -344,7 +344,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       @Override
       public Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
           RealmContext realmContext) {
-        return () -> polarisContext.getMetaStore();
+        return () -> ((TransactionalPersistence) polarisContext.getMetaStore());
       }
 
       @Override
