@@ -75,13 +75,21 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
 
     @Override
     /**
-     * List all UDOs
+     * List all objects of UDO: {type}
      */
     public Response listUdoObjects(String type, RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
         // Implement your extension logic here
 
         LOGGER.info("list of {} returning:", type);
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    }
+    @Override
+    public Response listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        // Implement your extension logic here
+
+        LOGGER.info("list of all UDO types returning: {}");
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 

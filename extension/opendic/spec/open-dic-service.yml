@@ -232,7 +232,7 @@ components:
       required:
         - object
 
-    PullUdo:
+    PullUdoRequest:
       type: object
       description: Request to pull all UDO objects of an existing type.
       properties:
