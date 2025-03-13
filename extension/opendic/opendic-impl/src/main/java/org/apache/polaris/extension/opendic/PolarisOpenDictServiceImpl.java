@@ -4,7 +4,9 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+
 import java.util.List;
+
 import org.apache.avro.generic.GenericRecord;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -23,7 +25,9 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Concrete implementation of the Polaris API services */
+/**
+ * Concrete implementation of the Polaris API services
+ */
 @RequestScoped
 public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
 
@@ -35,11 +39,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     private final CallContext callContext;
 
     @Inject
-    public PolarisOpenDictServiceImpl(
-        RealmEntityManagerFactory entityManagerFactory,
-        MetaStoreManagerFactory metaStoreManagerFactory,
-        PolarisAuthorizer polarisAuthorizer,
-        CallContext callContext
+    public PolarisOpenDictServiceImpl(RealmEntityManagerFactory entityManagerFactory, MetaStoreManagerFactory metaStoreManagerFactory, PolarisAuthorizer polarisAuthorizer, CallContext callContext
     ) {
         this.entityManagerFactory = entityManagerFactory;
         this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -50,26 +50,17 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     }
 
     // Reuse the same helper method from PolarisServiceImpl
-    private PolarisOpenDictService newAdminService(
-        RealmContext realmContext,
-        SecurityContext securityContext
+    private PolarisOpenDictService newAdminService(RealmContext realmContext, SecurityContext securityContext
     ) {
-        AuthenticatedPolarisPrincipal authenticatedPrincipal =
-            (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+        AuthenticatedPolarisPrincipal authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
         if (authenticatedPrincipal == null) {
             throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
         }
         // Create a new admin service with the right context
         PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realmContext);
-        PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(
-            realmContext
+        PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext
         );
-        return new PolarisOpenDictService(
-            callContext,
-            entityManager,
-            metaStoreManager,
-            securityContext,
-            polarisAuthorizer
+        return new PolarisOpenDictService(callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer
         );
     }
 
@@ -84,25 +75,23 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
         LOGGER.info("list of {} returning:", type);
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
+
     @Override
     public Response listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
         // Implement your extension logic here
 
-        LOGGER.info("list of all UDO types returning: {}");
+        LOGGER.info("list of all UDO types returning: {}", "test");
+        System.out.println("list of all UDO types returning:");
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 
     @Override
-    public Response createUdo(
-        String type,
-        CreateUdoRequest request,
-        RealmContext realmContext,
-        SecurityContext securityContext
+    public Response createUdo(String type, CreateUdoRequest request, RealmContext realmContext, SecurityContext securityContext
     ) {
         PolarisAdminService adminService = newAdminService(realmContext, securityContext);
         // Implement your extension logic here
-        LOGGER.info("Created new {} UDO {}", type, request.getObject().getName());
+        LOGGER.info("Created new {} UDO {}", type, request.getUdo().getName());
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 }

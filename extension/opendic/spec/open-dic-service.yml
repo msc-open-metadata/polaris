@@ -89,7 +89,7 @@ paths:
         201:
           description: Udo created successfully
         400:
-          description: Invalid request data
+          description: Invalid request data.
 
   /objects/{name}/platforms:
     parameters:
@@ -210,10 +210,10 @@ components:
       type: object
       description: Request to create a new object of an existing type.
       properties:
-        object:
+        udo:
           $ref: "#/components/schemas/Udo"
       required:
-        - object
+        - udo
 
     DefineUdoRequest:
       type: object
@@ -259,7 +259,7 @@ components:
           description: The name of the object
         props:
           type: object
-          additionalProperties: true
+          additionalProperties: {type: object}
         createTimestamp:
           type: integer
           format: "int64"

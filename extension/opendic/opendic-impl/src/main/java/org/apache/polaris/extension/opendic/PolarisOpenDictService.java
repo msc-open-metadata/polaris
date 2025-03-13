@@ -47,6 +47,6 @@ public class PolarisOpenDictService extends PolarisAdminService {
     // TODO: Use PolarisEntity or OpenDictEntity
     public List<Object> listUdoObjects(RealmContext realmContext, SecurityContext securityContext) {
         authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
-        return null;
+                return null;
     }
 }
