@@ -347,7 +347,7 @@ components:
       type: object
       description: An SQL statement that that creates or replaces object in a specific platform
       properties:
-        def:
+        definition:
           type: string
       required:
         - def
