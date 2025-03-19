@@ -91,6 +91,17 @@ dependencies {
   implementation("com.azure:azure-core")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
+
+  testFixturesApi("com.fasterxml.jackson.core:jackson-core")
+  testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
+  testFixturesApi(libs.commons.lang3)
+  testFixturesApi(libs.threeten.extra)
+  testFixturesApi(platform(libs.jackson.bom))
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testFixturesApi(libs.jakarta.annotation.api)
+
+  compileOnly(libs.jakarta.annotation.api)
+
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
