@@ -21,6 +21,7 @@ package org.apache.polaris.core;
 import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.BasePersistence;
 
 /**
@@ -60,7 +61,7 @@ public class PolarisCallContext {
 
   public static PolarisCallContext copyOf(PolarisCallContext original) {
     return new PolarisCallContext(
-        original.getMetaStore(),
+        original.getMetaStore().detach(),
         original.getDiagServices(),
         original.getConfigurationStore(),
         original.getClock());
