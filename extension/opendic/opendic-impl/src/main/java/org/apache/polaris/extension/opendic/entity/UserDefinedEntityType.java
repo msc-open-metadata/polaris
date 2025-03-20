@@ -19,13 +19,24 @@
 
 package org.apache.polaris.extension.opendic.entity;
 
+import org.apache.avro.LogicalTypes;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
+
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+
+/**
+ * A record representing user defined types in the opendict specification.
+ * A type in this case is defined by a name, e.g. Function and a prop map, e.g. a list of property definitions that are
+ * that this type expects. For now, this entity can be considered a userdefined table schema
+ *
+ */
 public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinition> propertyDefinitions) {
     /**
-     * Constructor for creating a new user-defined entity type.
+     * Creating a new user-defined entity type.
      *
      * @param typeName            The name of the entity type
      * @param propertyDefinitions The property definitions for this entity type.
@@ -44,7 +55,7 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
      * "return_type": "string"
      * }
      */
-    public static Map<String, PropertyDefinition> fromMap(Map<String, String> propMap) {
+    public static Map<String, PropertyDefinition> propsFromMap(Map<String, String> propMap) {
         if (propMap == null) {
             return new HashMap<>();
         }
@@ -67,9 +78,130 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
             case "number" -> PropertyType.NUMBER;
             case "boolean" -> PropertyType.BOOLEAN;
             case "date" -> PropertyType.DATE;
-            case "map", "object", "list" -> PropertyType.VARIANT;
+            case "array" -> PropertyType.ARRAY;
+            case "map", "object" -> PropertyType.VARIANT;
             default -> PropertyType.STRING; // Default to STRING for unknown types
         };
+    }
+
+    /**
+     * Generate an Avro schema from a UserDefinedEntityType
+     *
+     * @param entityType The user-defined entity type
+     * @return An Avro Schema representing the entity type
+     */
+    public static Schema generateSchema(UserDefinedEntityType entityType) {
+        if (entityType == null) {
+            throw new IllegalArgumentException("Entity type cannot be null");
+        }
+
+        // Start building a record schema with the entity type name
+        SchemaBuilder.RecordBuilder<Schema> recordBuilder = SchemaBuilder
+                .record(entityType.typeName())
+                //TODO system namespace??
+                .namespace("org.apache.polaris.extension.opendic.entity");
+
+        // Create fields builder
+        SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
+
+        // Add each property as a field
+        for (Map.Entry<String, UserDefinedEntityType.PropertyDefinition> entry :
+                entityType.propertyDefinitions().entrySet()) {
+
+            String propName = entry.getKey();
+            UserDefinedEntityType.PropertyDefinition propDef = entry.getValue();
+            UserDefinedEntityType.PropertyType propType = propDef.getPropType();
+
+            // Add the field with appropriate type
+            addField(fieldAssembler, propName, propType);
+        }
+        // Add additional fields
+        fieldAssembler
+                .name("catalogId")
+                .type().unionOf().nullType().and().longType().endUnion()
+                .noDefault();
+        fieldAssembler
+                .name("createTimestamp")
+                .type().unionOf().nullType().and().longType().endUnion()
+                .noDefault();
+        fieldAssembler
+                .name("lastUpdateTimestamp")
+                .type().unionOf().nullType().and().longType().endUnion()
+                .noDefault();
+        fieldAssembler
+                .name("entityVersion")
+                .type().unionOf().nullType().and().intType().endUnion()
+                .noDefault();
+
+        return fieldAssembler.endRecord();
+    }
+
+    /**
+     * Add a field to the schema with the appropriate Avro type
+     */
+    private static void addField(SchemaBuilder.FieldAssembler<Schema> fieldAssembler,
+                                 String fieldName,
+                                 UserDefinedEntityType.PropertyType propertyType) {
+
+        switch (propertyType) {
+            case STRING:
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf().nullType().and().stringType().endUnion()
+                        .noDefault();
+                break;
+
+            case NUMBER:
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf().nullType().and().doubleType().endUnion()
+                        .noDefault();
+                break;
+
+            case BOOLEAN:
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf().nullType().and().booleanType().endUnion()
+                        .noDefault();
+                break;
+
+            case DATE:
+                Schema dateSchema = LogicalTypes.date().addToSchema(Schema.create(Schema.Type.INT));
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf().nullType().and().type(dateSchema).endUnion()
+                        .noDefault();
+                break;
+            case ARRAY:
+                // For array type, create a union of null and array of string
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf().nullType().and()
+                        .array().items().stringType()
+                        .endUnion()
+                        .noDefault();
+                break;
+            case VARIANT:
+                // For variant type, create a union of all possible types
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf()
+                        .nullType().and()
+                        .stringType().and()
+                        .doubleType().and()
+                        .booleanType().and()
+                        .map().values().stringType()
+                        .endUnion()
+                        .noDefault();
+                break;
+
+            default:
+                // Default to string for unknown types
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf().nullType().and().stringType().endUnion()
+                        .noDefault();
+        }
     }
 
     /**
@@ -77,7 +209,7 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
      * {@code @example:} def: VARIANT, name: STRING
      */
     public enum PropertyType {
-        STRING, NUMBER, BOOLEAN, DATE, VARIANT
+        STRING, NUMBER, BOOLEAN, DATE, VARIANT, ARRAY
     }
 
     public static class PropertyDefinition {
@@ -89,19 +221,26 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
             this.propType = propType;
         }
 
+        public String getPropName() {
+            return propName;
+        }
+
+        public PropertyType getPropType() {
+            return propType;
+        }
     }
 
     /**
      * Builder for creating UserDefinedEntityType instances.
      */
     public static class Builder {
-        private final Map<String, PropertyDefinition> props = new HashMap<>();
         private String typeName;
+
+        private final Map<String, PropertyDefinition> props = new HashMap<>();
         //TODO required property?
 
-        public Builder setTypeName(String typeName) {
+        public Builder (String typeName) {
             this.typeName = typeName;
-            return this;
         }
 
         public Builder addProperty(String name, PropertyType type) {
@@ -109,7 +248,7 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
             return this;
         }
 
-        public Builder addProperties(Map<String, PropertyDefinition> properties) {
+        public Builder setProperties(Map<String, PropertyDefinition> properties) {
             props.putAll(properties);
             return this;
         }

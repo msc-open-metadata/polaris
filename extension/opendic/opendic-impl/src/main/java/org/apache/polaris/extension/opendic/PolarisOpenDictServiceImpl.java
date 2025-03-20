@@ -75,7 +75,9 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
         LOGGER.info("list of {} returning:", type);
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
-
+    /**
+     * List all UDO types
+     */
     @Override
     public Response listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);

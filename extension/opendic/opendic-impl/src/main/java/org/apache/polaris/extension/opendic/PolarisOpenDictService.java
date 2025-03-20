@@ -12,9 +12,12 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntityType;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
 import org.apache.polaris.extension.opendic.model.Udo;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -38,14 +41,20 @@ public class PolarisOpenDictService extends PolarisAdminService {
 
     // TODO: Use PolarisEntity or OpenDictEntity
     // TODO: Create new OpenDictAuthorizableOperation.
-    public Object createUdo(Udo obj) {
+    public UserDefinedEntity createUdo(Udo entity) {
         PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
         super.authorizeBasicRootOperationOrThrow(op);
+
+        UserDefinedEntityType udoType = new UserDefinedEntityType.Builder("Function")
+                .build();
+
         return null;
+
     }
 
+
     // TODO: Use PolarisEntity or OpenDictEntity
-    public List<Object> listUdoObjects(RealmContext realmContext, SecurityContext securityContext) {
+    public List<UserDefinedEntity> listUdoObjects(RealmContext realmContext, SecurityContext securityContext) {
         authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
                 return null;
     }
