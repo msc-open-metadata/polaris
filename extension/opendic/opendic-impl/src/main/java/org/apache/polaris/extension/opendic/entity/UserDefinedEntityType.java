@@ -33,7 +33,7 @@ import java.util.Map;
  * A type in this case is defined by a name, e.g. Function and a prop map, e.g. a list of property definitions that are
  * that this type expects. For now, this entity can be considered a userdefined table schema
  */
-public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinition> propertyDefinitions) {
+public record UserDefinedEntityType(String typeName, Map<String, PropertyType> propertyDefinitions) {
     /**
      * Creating a new user-defined entity type.
      *
@@ -49,23 +49,29 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
      *
      * @code example:
      * "props": {
-     * "def": "variant"
+     * "def": {"variant", "required"}
      * "language": "string"
      * "return_type": "string"
      * }
+     * @code example:
+     * {map:
+     * "def":VARIANT
+     * "language":STRING
+     * "return_type": "STRING"
+     * }
      */
-    public static Map<String, PropertyDefinition> propsFromMap(Map<String, String> propMap) {
+    public static Map<String, PropertyType> propsFromMap(Map<String, String> propMap) {
         if (propMap == null) {
             return new HashMap<>();
         }
 
-        Map<String, PropertyDefinition> result = new HashMap<>();
+        Map<String, PropertyType> result = new HashMap<>();
 
         for (Map.Entry<String, String> entry : propMap.entrySet()) {
             String propName = entry.getKey();
             String typeStr = entry.getValue();
             PropertyType propType = determinePropertyTypeFromString(typeStr);
-            result.put(propName, new PropertyDefinition(propName, propType));
+            result.put(propName, propType);
         }
 
         return result;
@@ -78,7 +84,7 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
             case "boolean" -> PropertyType.BOOLEAN;
             case "date" -> PropertyType.DATE;
             case "array" -> PropertyType.ARRAY;
-            case "map", "object" -> PropertyType.VARIANT;
+            case "map", "object", "variant" -> PropertyType.VARIANT;
             default -> PropertyType.STRING; // Default to STRING for unknown types
         };
     }
@@ -104,12 +110,11 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
         SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
 
         // Add each property as a field
-        for (Map.Entry<String, UserDefinedEntityType.PropertyDefinition> entry :
+        for (Map.Entry<String, UserDefinedEntityType.PropertyType> entry :
                 entityType.propertyDefinitions().entrySet()) {
 
             String propName = entry.getKey();
-            UserDefinedEntityType.PropertyDefinition propDef = entry.getValue();
-            UserDefinedEntityType.PropertyType propType = propDef.getPropType();
+            UserDefinedEntityType.PropertyType propType = entry.getValue();
 
             // Add the field with appropriate type
             addField(fieldAssembler, propName, propType);
@@ -206,32 +211,19 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
      * {@code @example:} def: VARIANT, name: STRING
      */
     public enum PropertyType {
-        STRING, NUMBER, BOOLEAN, DATE, VARIANT, ARRAY
-    }
-
-    public static class PropertyDefinition {
-        private final String propName;
-        private final PropertyType propType;
-
-        public PropertyDefinition(String propName, PropertyType propType) {
-            this.propName = propName;
-            this.propType = propType;
-        }
-
-        public String getPropName() {
-            return propName;
-        }
-
-        public PropertyType getPropType() {
-            return propType;
-        }
+        STRING, STRING_OPTIONAL,
+        NUMBER, NUMBER_OPTIONAL,
+        BOOLEAN, BOOLEAN_OPTIONAL,
+        DATE, DATE_OPTIONAL,
+        VARIANT, VARIANT_OPTIONAL,
+        ARRAY, ARRAY_OPTIONAL
     }
 
     /**
      * Builder for creating UserDefinedEntityType instances.
      */
     public static class Builder {
-        private final Map<String, PropertyDefinition> props = new HashMap<>();
+        private final Map<String, PropertyType> props = new HashMap<>();
         private final String typeName;
         //TODO required property?
 
@@ -240,11 +232,11 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
         }
 
         public Builder addProperty(String name, PropertyType type) {
-            props.put(name, new PropertyDefinition(name, type));
+            props.put(name, type);
             return this;
         }
 
-        public Builder setProperties(Map<String, PropertyDefinition> properties) {
+        public Builder setProperties(Map<String, PropertyType> properties) {
             props.putAll(properties);
             return this;
         }

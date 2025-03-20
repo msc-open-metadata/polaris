@@ -50,7 +50,7 @@ class UserDefinedEntityTypeTest {
     @MethodSource("propertyTypeProvider")
     void test_001_fromMap(Map<String, String> propMap, int expectedSize, String msg) {
         // Test with a null map
-        Map<String, UserDefinedEntityType.PropertyDefinition> result = UserDefinedEntityType.propsFromMap(propMap);
+        Map<String, UserDefinedEntityType.PropertyType> result = UserDefinedEntityType.propsFromMap(propMap);
         assertNotNull(result);
         assertEquals(expectedSize, result.size());
 
