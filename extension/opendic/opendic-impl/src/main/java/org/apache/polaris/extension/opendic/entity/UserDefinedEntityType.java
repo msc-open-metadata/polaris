@@ -32,7 +32,6 @@ import java.util.Map;
  * A record representing user defined types in the opendict specification.
  * A type in this case is defined by a name, e.g. Function and a prop map, e.g. a list of property definitions that are
  * that this type expects. For now, this entity can be considered a userdefined table schema
- *
  */
 public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinition> propertyDefinitions) {
     /**
@@ -173,7 +172,6 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
                         .noDefault();
                 break;
             case ARRAY:
-                // For array type, create a union of null and array of string
                 fieldAssembler
                         .name(fieldName)
                         .type().unionOf().nullType().and()
@@ -182,7 +180,6 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
                         .noDefault();
                 break;
             case VARIANT:
-                // For variant type, create a union of all possible types
                 fieldAssembler
                         .name(fieldName)
                         .type().unionOf()
@@ -234,12 +231,11 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyDefinit
      * Builder for creating UserDefinedEntityType instances.
      */
     public static class Builder {
-        private String typeName;
-
         private final Map<String, PropertyDefinition> props = new HashMap<>();
+        private final String typeName;
         //TODO required property?
 
-        public Builder (String typeName) {
+        public Builder(String typeName) {
             this.typeName = typeName;
         }
 
