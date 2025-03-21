@@ -17,6 +17,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.extension.opendic.api.PolarisObjectsApiService;
+import org.apache.polaris.extension.opendic.entity.DeprecatedUserDefinedEntity;
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
 import org.apache.polaris.extension.opendic.model.Udo;
 import org.apache.polaris.extension.opendic.model.Udos;
@@ -91,8 +93,11 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     @Override
     public Response createUdo(String type, CreateUdoRequest request, RealmContext realmContext, SecurityContext securityContext
     ) {
-        PolarisAdminService adminService = newAdminService(realmContext, securityContext);
-        // Implement your extension logic here
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        DeprecatedUserDefinedEntity entity = DeprecatedUserDefinedEntity.fromUdo(request.getUdo());
+
+        adminService.createUdo(entity);
+
         LOGGER.info("Created new {} UDO {}", type, request.getUdo().getName());
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }

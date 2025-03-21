@@ -17,7 +17,18 @@
  * under the License.
  */
 
-package org.apache.polaris.extension.opendic.entity;
+package org.apache.polaris.extension.opendic.persistence;
 
-public class UserDefinedEntity {
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
+
+import java.util.List;
+
+public interface IRepositoryBase {
+    void initializeTable(String entityTypeName);
+
+    void saveEntity(UserDefinedEntity entity);
+
+    List<UserDefinedEntity> listEntities(String entityTypeName);
+
+    List<String> listEntityTypes();
 }

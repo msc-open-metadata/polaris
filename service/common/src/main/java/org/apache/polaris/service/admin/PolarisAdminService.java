@@ -116,7 +116,7 @@ public class PolarisAdminService {
   private final SecurityContext securityContext;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
-  private final PolarisMetaStoreManager metaStoreManager;
+  protected final PolarisMetaStoreManager metaStoreManager;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -144,7 +144,7 @@ public class PolarisAdminService {
     this.authorizer = authorizer;
   }
 
-  private PolarisCallContext getCurrentPolarisContext() {
+  protected PolarisCallContext getCurrentPolarisContext() {
     return callContext.getPolarisCallContext();
   }
 

@@ -19,5 +19,5 @@
 
 package org.apache.polaris.extension.opendic.entity;
 
-public class UserDefinedEntity {
+public class UserDefinedPlatformMapping {
 }

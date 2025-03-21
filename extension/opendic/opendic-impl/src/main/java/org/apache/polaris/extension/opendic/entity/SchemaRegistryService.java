@@ -19,5 +19,24 @@
 
 package org.apache.polaris.extension.opendic.entity;
 
-public class UserDefinedEntity {
+import java.util.HashMap;
+import java.util.Map;
+
+public class SchemaRegistryService implements ISchemaRegistryService {
+    private final Map<String, UserDefinedEntitySchema> registeredSchemas = new HashMap<>();
+
+    @Override
+    public void registerSchema(String typeName, UserDefinedEntitySchema schema) {
+
+    }
+
+    @Override
+    public UserDefinedEntitySchema getSchema(String typeName) {
+        return null;
+    }
+
+    @Override
+    public boolean validateEntity(String entityType, UserDefinedEntity newEntity) {
+        return false;
+    }
 }

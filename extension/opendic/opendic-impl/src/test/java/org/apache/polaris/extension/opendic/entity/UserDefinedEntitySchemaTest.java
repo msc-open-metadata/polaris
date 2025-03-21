@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class UserDefinedEntityTypeTest {
+class UserDefinedEntitySchemaTest {
 
     static Stream<Arguments> propertyTypeProvider() {
         return Stream.of(
@@ -50,7 +50,7 @@ class UserDefinedEntityTypeTest {
     @MethodSource("propertyTypeProvider")
     void test_001_fromMap(Map<String, String> propMap, int expectedSize, String msg) {
         // Test with a null map
-        Map<String, UserDefinedEntityType.PropertyType> result = UserDefinedEntityType.propsFromMap(propMap);
+        Map<String, UserDefinedEntitySchema.PropertyType> result = UserDefinedEntitySchema.propsFromMap(propMap);
         assertNotNull(result);
         assertEquals(expectedSize, result.size());
 
@@ -76,11 +76,11 @@ class UserDefinedEntityTypeTest {
     @MethodSource("schemaPropertyTypeProvider")
     void test_002_generateSchema(String typeName, Map<String, String> props) {
 
-        UserDefinedEntityType entityType = new UserDefinedEntityType.Builder(typeName)
-                .setProperties(UserDefinedEntityType.propsFromMap(props))
+        UserDefinedEntitySchema entityType = new UserDefinedEntitySchema.Builder(typeName)
+                .setProperties(UserDefinedEntitySchema.propsFromMap(props))
                 .build();
 
-        Schema schema = UserDefinedEntityType.generateSchema(entityType);
+        Schema schema = UserDefinedEntitySchema.toSchema(entityType);
 
         assertNotNull(schema, "Schema should not be null");
         assertEquals(Schema.Type.RECORD, schema.getType(), "Schema type should be RECORD");

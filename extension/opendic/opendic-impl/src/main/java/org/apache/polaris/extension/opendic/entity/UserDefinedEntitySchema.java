@@ -33,14 +33,23 @@ import java.util.Map;
  * A type in this case is defined by a name, e.g. Function and a prop map, e.g. a list of property definitions that are
  * that this type expects. For now, this entity can be considered a userdefined table schema
  */
-public record UserDefinedEntityType(String typeName, Map<String, PropertyType> propertyDefinitions) {
+public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType> propertyDefinitions) {
     /**
      * Creating a new user-defined entity type.
      *
      * @param typeName            The name of the entity type
      * @param propertyDefinitions The property definitions for this entity type.
      */
-    public UserDefinedEntityType {
+    public UserDefinedEntitySchema {
+    }
+
+
+    public static Schema parseSchema(String stringJson) {
+        return new Schema.Parser().parse(stringJson);
+    }
+
+    public static String serializeSchema(Schema schema) {
+        return schema.toString(true);
     }
 
     /**
@@ -95,7 +104,7 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyType> p
      * @param entityType The user-defined entity type
      * @return An Avro Schema representing the entity type
      */
-    public static Schema generateSchema(UserDefinedEntityType entityType) {
+    public static Schema toSchema(UserDefinedEntitySchema entityType) {
         if (entityType == null) {
             throw new IllegalArgumentException("Entity type cannot be null");
         }
@@ -110,11 +119,11 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyType> p
         SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
 
         // Add each property as a field
-        for (Map.Entry<String, UserDefinedEntityType.PropertyType> entry :
+        for (Map.Entry<String, UserDefinedEntitySchema.PropertyType> entry :
                 entityType.propertyDefinitions().entrySet()) {
 
             String propName = entry.getKey();
-            UserDefinedEntityType.PropertyType propType = entry.getValue();
+            UserDefinedEntitySchema.PropertyType propType = entry.getValue();
 
             // Add the field with appropriate type
             addField(fieldAssembler, propName, propType);
@@ -145,7 +154,7 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyType> p
      */
     private static void addField(SchemaBuilder.FieldAssembler<Schema> fieldAssembler,
                                  String fieldName,
-                                 UserDefinedEntityType.PropertyType propertyType) {
+                                 UserDefinedEntitySchema.PropertyType propertyType) {
 
         switch (propertyType) {
             case STRING:
@@ -241,11 +250,11 @@ public record UserDefinedEntityType(String typeName, Map<String, PropertyType> p
             return this;
         }
 
-        public UserDefinedEntityType build() {
+        public UserDefinedEntitySchema build() {
             if (typeName == null || typeName.isEmpty()) {
                 throw new IllegalStateException("Entity type typeName is required");
             }
-            return new UserDefinedEntityType(typeName, props);
+            return new UserDefinedEntitySchema(typeName, props);
         }
     }
 }
