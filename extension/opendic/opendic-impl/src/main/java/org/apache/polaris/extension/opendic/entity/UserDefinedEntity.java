@@ -73,7 +73,7 @@ public class UserDefinedEntity extends PolarisEntity {
     public static class Builder extends PolarisEntity.BaseBuilder<UserDefinedEntity, Builder> {
         public Builder(String entityName, String typeSchema) {
             super();
-            setType(PolarisEntityType.TABLE_LIKE);
+            setType(PolarisEntityType.ICEBERG_TABLE_LIKE);
             setName(entityName);
             setTypeSchema(typeSchema);
         }
