@@ -13,8 +13,12 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.extension.opendic.api.PolarisObjectsApiService;
-import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
+import org.apache.polaris.extension.opendic.entity.DeprecatedPolarisUserDefinedEntity;
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
+import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
+import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
+import org.apache.polaris.extension.opendic.persistence.IcebergRepository;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +58,8 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
         PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realmContext);
         PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext
         );
-        return new PolarisOpenDictService(callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer
+        IBaseRepository icebergRepository = new IcebergRepository("polaris");
+        return new PolarisOpenDictService(callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer, icebergRepository
         );
     }
 
@@ -87,11 +92,23 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     public Response createUdo(String type, CreateUdoRequest request, RealmContext realmContext, SecurityContext securityContext
     ) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
-        UserDefinedEntity entity = UserDefinedEntity.fromUdo(request.getUdo());
+        DeprecatedPolarisUserDefinedEntity entity = DeprecatedPolarisUserDefinedEntity.fromUdo(request.getUdo());
 
         adminService.createUdo(entity);
 
         LOGGER.info("Created new {} UDO {}", type, request.getUdo().getName());
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
+
+    @Override
+    public Response defineUdo(DefineUdoRequest request, RealmContext realmContext, SecurityContext securityContext) {
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        UserDefinedEntitySchema schema = UserDefinedEntitySchema.fromRequest(request);
+
+        var created_columns = adminService.defineSchema(schema);
+        LOGGER.info("Defined new udo type {}", request.getUdoType());
+        LOGGER.info("New type: {}", created_columns);
+        return Response.status(Response.Status.CREATED).build();
+    }
+
 }

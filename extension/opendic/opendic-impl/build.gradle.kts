@@ -18,89 +18,93 @@
  */
 
 plugins {
-  id("polaris-server")
-  id("java-test-fixtures")
-  alias(libs.plugins.jandex)
+    id("polaris-server")
+    id("java-test-fixtures")
+    alias(libs.plugins.jandex)
 }
 
 dependencies {
-  implementation(project(":polaris-core"))
-  implementation(project(":polaris-api-management-model"))
-  implementation(project(":polaris-api-management-service"))
-  implementation(project(":polaris-api-iceberg-service"))
-  implementation(project(":polaris-service-common"))
-  implementation(project(":polaris-extension-opendic-api-model")) /* TODO */
-  implementation(project(":polaris-extension-opendic-api-service")) /* TODO */
+    implementation(project(":polaris-core"))
+    implementation(project(":polaris-api-management-model"))
+    implementation(project(":polaris-api-management-service"))
+    implementation(project(":polaris-api-iceberg-service"))
+    implementation(project(":polaris-service-common"))
+    implementation(project(":polaris-extension-opendic-api-model")) /* TODO */
+    implementation(project(":polaris-extension-opendic-api-service")) /* TODO */
 
-  implementation(platform(libs.iceberg.bom))
-  implementation("org.apache.iceberg:iceberg-api")
-  implementation("org.apache.iceberg:iceberg-core")
-  implementation("org.apache.iceberg:iceberg-aws")
+    implementation(platform(libs.iceberg.bom))
+    implementation("org.apache.iceberg:iceberg-api")
+    implementation("org.apache.iceberg:iceberg-core")
+    implementation("org.apache.iceberg:iceberg-aws")
+    implementation("org.apache.iceberg:iceberg-parquet")
+    implementation("org.apache.iceberg:iceberg-data")
 
-  implementation(libs.hadoop.common) {
-    exclude("org.slf4j", "slf4j-reload4j")
-    exclude("org.slf4j", "slf4j-log4j12")
-    exclude("ch.qos.reload4j", "reload4j")
-    exclude("log4j", "log4j")
-    exclude("org.apache.zookeeper", "zookeeper")
-    exclude("org.apache.hadoop.thirdparty", "hadoop-shaded-protobuf_3_25")
-    exclude("com.github.pjfanning", "jersey-json")
-    exclude("com.sun.jersey", "jersey-core")
-    exclude("com.sun.jersey", "jersey-server")
-    exclude("com.sun.jersey", "jersey-servlet")
-    exclude("com.sun.jersey", "jersey-servlet")
-    exclude("io.dropwizard.metrics", "metrics-core")
-  }
-  implementation(libs.hadoop.hdfs.client)
+    implementation("org.apache.parquet:parquet-column:1.15.1")
 
-  implementation(libs.jakarta.annotation.api)
-  implementation(libs.jakarta.enterprise.cdi.api)
-  implementation(libs.jakarta.inject.api)
-  implementation(libs.jakarta.servlet.api)
-  implementation(libs.jakarta.validation.api)
-  implementation(libs.jakarta.ws.rs.api)
+    implementation(libs.hadoop.common) {
+        exclude("org.slf4j", "slf4j-reload4j")
+        exclude("org.slf4j", "slf4j-log4j12")
+        exclude("ch.qos.reload4j", "reload4j")
+        exclude("log4j", "log4j")
+        exclude("org.apache.zookeeper", "zookeeper")
+        exclude("org.apache.hadoop.thirdparty", "hadoop-shaded-protobuf_3_25")
+        exclude("com.github.pjfanning", "jersey-json")
+        exclude("com.sun.jersey", "jersey-core")
+        exclude("com.sun.jersey", "jersey-server")
+        exclude("com.sun.jersey", "jersey-servlet")
+        exclude("com.sun.jersey", "jersey-servlet")
+        exclude("io.dropwizard.metrics", "metrics-core")
+    }
+    implementation(libs.hadoop.hdfs.client)
 
-  implementation(libs.smallrye.common.annotation)
+    implementation(libs.jakarta.annotation.api)
+    implementation(libs.jakarta.enterprise.cdi.api)
+    implementation(libs.jakarta.inject.api)
+    implementation(libs.jakarta.servlet.api)
+    implementation(libs.jakarta.validation.api)
+    implementation(libs.jakarta.ws.rs.api)
 
-  implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation(libs.smallrye.common.annotation)
 
-  implementation(libs.caffeine)
-  implementation(libs.guava)
-  implementation(libs.slf4j.api)
+    implementation(platform(libs.jackson.bom))
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
 
-  compileOnly(libs.swagger.annotations)
-  compileOnly(libs.spotbugs.annotations)
-  implementation(libs.swagger.jaxrs)
+    implementation(libs.caffeine)
+    implementation(libs.guava)
+    implementation(libs.slf4j.api)
 
-  implementation(libs.hadoop.client.api)
+    compileOnly(libs.swagger.annotations)
+    compileOnly(libs.spotbugs.annotations)
+    implementation(libs.swagger.jaxrs)
 
-  implementation(libs.auth0.jwt)
+    implementation(libs.hadoop.client.api)
 
-  implementation(libs.bouncycastle.bcprov)
+    implementation(libs.auth0.jwt)
 
-  implementation(platform(libs.google.cloud.storage.bom))
-  implementation("com.google.cloud:google-cloud-storage")
+    implementation(libs.bouncycastle.bcprov)
 
-  implementation(platform(libs.awssdk.bom))
-  implementation("software.amazon.awssdk:sts")
-  implementation("software.amazon.awssdk:iam-policy-builder")
-  implementation("software.amazon.awssdk:s3")
+    implementation(platform(libs.google.cloud.storage.bom))
+    implementation("com.google.cloud:google-cloud-storage")
 
-  implementation(platform(libs.azuresdk.bom))
-  implementation("com.azure:azure-core")
-  implementation("com.azure:azure-storage-blob")
-  implementation("com.azure:azure-storage-file-datalake")
+    implementation(platform(libs.awssdk.bom))
+    implementation("software.amazon.awssdk:sts")
+    implementation("software.amazon.awssdk:iam-policy-builder")
+    implementation("software.amazon.awssdk:s3")
 
-  testFixturesApi("com.fasterxml.jackson.core:jackson-core")
-  testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
-  testFixturesApi(libs.commons.lang3)
-  testFixturesApi(libs.threeten.extra)
-  testFixturesApi(platform(libs.jackson.bom))
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-  testFixturesApi(libs.jakarta.annotation.api)
+    implementation(platform(libs.azuresdk.bom))
+    implementation("com.azure:azure-core")
+    implementation("com.azure:azure-storage-blob")
+    implementation("com.azure:azure-storage-file-datalake")
 
-  compileOnly(libs.jakarta.annotation.api)
+    testFixturesApi("com.fasterxml.jackson.core:jackson-core")
+    testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
+    testFixturesApi(libs.commons.lang3)
+    testFixturesApi(libs.threeten.extra)
+    testFixturesApi(platform(libs.jackson.bom))
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testFixturesApi(libs.jakarta.annotation.api)
+
+    compileOnly(libs.jakarta.annotation.api)
 
 }
 

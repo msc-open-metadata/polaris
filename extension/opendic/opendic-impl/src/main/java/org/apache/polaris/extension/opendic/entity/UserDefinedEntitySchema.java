@@ -19,9 +19,12 @@
 
 package org.apache.polaris.extension.opendic.entity;
 
+import com.google.common.base.Preconditions;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.iceberg.avro.AvroSchemaUtil;
+import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -43,13 +46,12 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
     public UserDefinedEntitySchema {
     }
 
-
-    public static Schema parseSchema(String stringJson) {
-        return new Schema.Parser().parse(stringJson);
-    }
-
-    public static String serializeSchema(Schema schema) {
-        return schema.toString(true);
+    public static UserDefinedEntitySchema fromRequest(DefineUdoRequest request){
+        Preconditions.checkNotNull(request);
+        //TODO find schema from name.
+        return new UserDefinedEntitySchema.Builder(request.getUdoType())
+                .setProperties(propsFromMap(request.getProperties()))
+                .build();
     }
 
     /**
@@ -57,36 +59,32 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
      * This handles prop map structures and converts them to appropriate PropertyType values.
      *
      * @code example:
-     * "props": {
-     * "def": {"variant", "required"}
-     * "language": "string"
-     * "return_type": "string"
-     * }
-     * @code example:
      * {map:
      * "def":VARIANT
      * "language":STRING
      * "return_type": "STRING"
+     * "args": "VARIANT"
      * }
      */
     public static Map<String, PropertyType> propsFromMap(Map<String, String> propMap) {
-        if (propMap == null) {
-            return new HashMap<>();
-        }
-
         Map<String, PropertyType> result = new HashMap<>();
+        if (propMap == null) {
+            return result;
+        }
 
         for (Map.Entry<String, String> entry : propMap.entrySet()) {
             String propName = entry.getKey();
             String typeStr = entry.getValue();
-            PropertyType propType = determinePropertyTypeFromString(typeStr);
-            result.put(propName, propType);
+            if (typeStr != null) {
+                PropertyType propType = propertyTypeFromString(typeStr);
+                result.put(propName, propType);
+            }
         }
 
         return result;
     }
 
-    private static PropertyType determinePropertyTypeFromString(String typeStr) {
+    private static PropertyType propertyTypeFromString(String typeStr) {
         return switch (typeStr.toLowerCase(Locale.ROOT)) {
             case "string" -> PropertyType.STRING;
             case "number" -> PropertyType.NUMBER;
@@ -101,18 +99,17 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
     /**
      * Generate an Avro schema from a UserDefinedEntityType
      *
-     * @param entityType The user-defined entity type
+     * @param entityTypeSchema The user-defined entity type
      * @return An Avro Schema representing the entity type
      */
-    public static Schema toSchema(UserDefinedEntitySchema entityType) {
-        if (entityType == null) {
+    public static Schema getAvroSchema(UserDefinedEntitySchema entityTypeSchema) {
+        if (entityTypeSchema == null) {
             throw new IllegalArgumentException("Entity type cannot be null");
         }
 
         // Start building a record schema with the entity type name
         SchemaBuilder.RecordBuilder<Schema> recordBuilder = SchemaBuilder
-                .record(entityType.typeName())
-                //TODO system namespace??
+                .record(entityTypeSchema.typeName())
                 .namespace("org.apache.polaris.extension.opendic.entity");
 
         // Create fields builder
@@ -120,7 +117,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
 
         // Add each property as a field
         for (Map.Entry<String, UserDefinedEntitySchema.PropertyType> entry :
-                entityType.propertyDefinitions().entrySet()) {
+                entityTypeSchema.propertyDefinitions().entrySet()) {
 
             String propName = entry.getKey();
             UserDefinedEntitySchema.PropertyType propType = entry.getValue();
@@ -128,24 +125,6 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
             // Add the field with appropriate type
             addField(fieldAssembler, propName, propType);
         }
-        // Add additional fields
-        fieldAssembler
-                .name("catalogId")
-                .type().unionOf().nullType().and().longType().endUnion()
-                .noDefault();
-        fieldAssembler
-                .name("createTimestamp")
-                .type().unionOf().nullType().and().longType().endUnion()
-                .noDefault();
-        fieldAssembler
-                .name("lastUpdateTimestamp")
-                .type().unionOf().nullType().and().longType().endUnion()
-                .noDefault();
-        fieldAssembler
-                .name("entityVersion")
-                .type().unionOf().nullType().and().intType().endUnion()
-                .noDefault();
-
         return fieldAssembler.endRecord();
     }
 
@@ -189,7 +168,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                 fieldAssembler
                         .name(fieldName)
                         .type().unionOf().nullType().and()
-                        .array().items().stringType()
+                        .array().items().unionOf().stringType().and().booleanType().and().longType().and().intType().endUnion()
                         .endUnion()
                         .noDefault();
                 break;
@@ -198,10 +177,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                         .name(fieldName)
                         .type().unionOf()
                         .nullType().and()
-                        .stringType().and()
-                        .doubleType().and()
-                        .booleanType().and()
-                        .map().values().stringType()
+                        .map().values().unionOf().stringType().and().intType().endUnion()
                         .endUnion()
                         .noDefault();
                 break;
@@ -215,17 +191,22 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         }
     }
 
+    public static org.apache.iceberg.Schema getIcebergSchema(UserDefinedEntitySchema entityTypeSchema) {
+        var avroSchema = getAvroSchema(entityTypeSchema);
+        return AvroSchemaUtil.toIceberg(avroSchema);
+    }
+
     /**
      * Property types for user-defined entity properties.
      * {@code @example:} def: VARIANT, name: STRING
      */
     public enum PropertyType {
-        STRING, STRING_OPTIONAL,
-        NUMBER, NUMBER_OPTIONAL,
-        BOOLEAN, BOOLEAN_OPTIONAL,
-        DATE, DATE_OPTIONAL,
-        VARIANT, VARIANT_OPTIONAL,
-        ARRAY, ARRAY_OPTIONAL
+        STRING,
+        NUMBER,
+        BOOLEAN,
+        DATE,
+        VARIANT,
+        ARRAY
     }
 
     /**

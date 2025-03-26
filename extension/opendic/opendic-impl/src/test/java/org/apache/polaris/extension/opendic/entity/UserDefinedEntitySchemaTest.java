@@ -46,6 +46,14 @@ class UserDefinedEntitySchemaTest {
         );
     }
 
+    static Stream<Arguments> schemaPropertyTypeProvider() {
+        return Stream.of(
+                Arguments.of("Function", Map.of("def", "variant", "language", "string")),
+                Arguments.of("User", Map.of("username", "string", "password", "string")),
+                Arguments.of("MaskingPolicy", Map.of("policy", "variant", "password", "string"))
+        );
+    }
+
     @ParameterizedTest
     @MethodSource("propertyTypeProvider")
     void test_001_fromMap(Map<String, String> propMap, int expectedSize, String msg) {
@@ -64,14 +72,6 @@ class UserDefinedEntitySchemaTest {
         }
     }
 
-
-    static Stream<Arguments> schemaPropertyTypeProvider() {
-        return Stream.of(
-                Arguments.of("Function", Map.of("def", "variant", "language", "string")),
-                Arguments.of("User", Map.of("username", "string", "password", "string")),
-                Arguments.of("MaskingPolicy", Map.of("policy", "variant", "password", "string"))
-        );}
-
     @ParameterizedTest
     @MethodSource("schemaPropertyTypeProvider")
     void test_002_generateSchema(String typeName, Map<String, String> props) {
@@ -80,7 +80,7 @@ class UserDefinedEntitySchemaTest {
                 .setProperties(UserDefinedEntitySchema.propsFromMap(props))
                 .build();
 
-        Schema schema = UserDefinedEntitySchema.toSchema(entityType);
+        Schema schema = UserDefinedEntitySchema.getAvroSchema(entityType);
 
         assertNotNull(schema, "Schema should not be null");
         assertEquals(Schema.Type.RECORD, schema.getType(), "Schema type should be RECORD");
