@@ -39,11 +39,11 @@ public class IcebergConfig {
      * @return Catalog
      * @implNote Translated from our spark configuration using claude
      */
-    public static Catalog createRESTCatalog(String catalogName, String clientId, String clientSecret) {
+    public static Catalog createRESTCatalog(String catalogName, String clientId, String clientSecret, String catalogUri) {
         Map<String, String> conf = new HashMap<>();
         conf.put("catalog-name", catalogName);
         conf.put("warehouse", catalogName);
-        conf.put("uri", "http://polaris:8181/api/catalog");
+        conf.put("uri", catalogUri); // Use the passed parameter instead of hardcoded value
         conf.put("credential", clientId + ":" + clientSecret);
         conf.put("scope", "PRINCIPAL_ROLE:ALL");
         conf.put("token-refresh-enabled", "true");
@@ -54,6 +54,9 @@ public class IcebergConfig {
 
         System.out.println("REST Catalog configured successfully");
         return catalog;
+    }
+    public static Catalog createRESTCatalog(String catalogName, String clientId, String clientSecret) {
+        return createRESTCatalog(catalogName, clientId, clientSecret, "http://polaris:8181/api/catalog");
     }
 
 }

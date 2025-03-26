@@ -35,13 +35,16 @@ public class IcebergRepository implements IBaseRepository {
      * Creates a repository with the default catalog
      */
     public IcebergRepository(String catalogName) {
-        this(catalogName, "engineer_client_id", "engineer_client_secret");
+        this(catalogName, "engineer_client_id", "engineer_client_secret", "http://polaris:8181/api/catalog");
+    }
+    public IcebergRepository(String catalogName, String baseUri) {
+        this(catalogName, "engineer_client_id", "engineer_client_secret", baseUri);
     }
 
     /**
      * Creates a repository with specific client credentials
      */
-    public IcebergRepository(String catalogName, String clientId, String clientSecret) {
+    public IcebergRepository(String catalogName, String clientId, String clientSecret, String baseUri) {
         this.catalogName = catalogName;
 
         // If credentials not provided, try to read from Docker secrets
@@ -68,7 +71,7 @@ public class IcebergRepository implements IBaseRepository {
             }
         }
 
-        this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientId, clientSecret);
+        this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientId, clientSecret, baseUri);
     }
 
     /**

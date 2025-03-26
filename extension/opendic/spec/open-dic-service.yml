@@ -230,7 +230,7 @@ components:
           additionalProperties:
             type: string
       required:
-        - object
+        - udoType
 
     PullUdoRequest:
       type: object

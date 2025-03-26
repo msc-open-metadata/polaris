@@ -27,8 +27,7 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class IcebergRepositoryTest {
 
@@ -70,5 +69,34 @@ class IcebergRepositoryTest {
                 def foo():
                     print("Hello World")
                 """, record.getField("def"));
+    }
+
+    @Test
+    void testCreateTable() {
+        Schema functionSchema = new Schema(
+                Types.NestedField.required(1, "id", Types.UUIDType.get()),
+                Types.NestedField.required(2, "name", Types.StringType.get()),
+                Types.NestedField.required(3, "def", Types.StringType.get()),
+                Types.NestedField.required(4, "comment", Types.StringType.get()),
+                Types.NestedField.required(5, "language", Types.StringType.get()),
+                Types.NestedField.required(6, "runtime", Types.StringType.get()),
+                Types.NestedField.required(7, "params", Types.MapType.ofRequired(1000, 1001, Types.StringType.get(), Types.StringType.get())
+                ));
+
+        IBaseRepository icebergRepo = new IcebergRepository("polaris", "http://localhost:8181/api/catalog");
+
+        String namespace = "SYSTEM";
+        String tablename = "function";
+
+        var columns = icebergRepo.createTable(namespace, tablename, functionSchema);
+        assertNotNull(columns);
+    }
+    @Test
+    void testDropTable(){
+        IBaseRepository icebergRepo = new IcebergRepository("polaris", "http://localhost:8181/api/catalog");
+        String namespace = "SYSTEM";
+        String tablename = "function";
+        var result = icebergRepo.dropTable(namespace, tablename);
+        assertTrue(result);
     }
 }
