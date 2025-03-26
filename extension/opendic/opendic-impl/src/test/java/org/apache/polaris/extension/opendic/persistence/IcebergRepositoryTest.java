@@ -83,19 +83,19 @@ class IcebergRepositoryTest {
                 Types.NestedField.required(7, "params", Types.MapType.ofRequired(1000, 1001, Types.StringType.get(), Types.StringType.get())
                 ));
 
-        IBaseRepository icebergRepo = new IcebergRepository("polaris", "http://localhost:8181/api/catalog");
+        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
 
         String namespace = "SYSTEM";
-        String tablename = "function";
+        String tablename = "andreas_function";
 
         var columns = icebergRepo.createTable(namespace, tablename, functionSchema);
         assertNotNull(columns);
     }
     @Test
     void testDropTable(){
-        IBaseRepository icebergRepo = new IcebergRepository("polaris", "http://localhost:8181/api/catalog");
+        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
         String namespace = "SYSTEM";
-        String tablename = "function";
+        String tablename = "carl_function";
         var result = icebergRepo.dropTable(namespace, tablename);
         assertTrue(result);
     }

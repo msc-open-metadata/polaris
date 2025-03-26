@@ -177,7 +177,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                         .name(fieldName)
                         .type().unionOf()
                         .nullType().and()
-                        .map().values().unionOf().stringType().and().intType().endUnion()
+                        .map().values().unionOf().stringType().endUnion()
                         .endUnion()
                         .noDefault();
                 break;

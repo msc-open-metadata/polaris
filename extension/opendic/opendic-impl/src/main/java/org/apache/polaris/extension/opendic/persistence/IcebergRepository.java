@@ -16,6 +16,9 @@ import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.DataWriter;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.parquet.Parquet;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,6 +31,7 @@ import java.util.stream.Collectors;
  * the configured REST catalog from IcebergConfig.
  */
 public class IcebergRepository implements IBaseRepository {
+    private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
     private final Catalog catalog;
     private final String catalogName;
 
@@ -35,8 +39,9 @@ public class IcebergRepository implements IBaseRepository {
      * Creates a repository with the default catalog
      */
     public IcebergRepository(String catalogName) {
-        this(catalogName, "engineer_client_id", "engineer_client_secret", "http://polaris:8181/api/catalog");
+        this(catalogName, "engineer_client_id", "engineer_client_secret", "http://polaris:8181");
     }
+
     public IcebergRepository(String catalogName, String baseUri) {
         this(catalogName, "engineer_client_id", "engineer_client_secret", baseUri);
     }
@@ -44,34 +49,19 @@ public class IcebergRepository implements IBaseRepository {
     /**
      * Creates a repository with specific client credentials
      */
-    public IcebergRepository(String catalogName, String clientId, String clientSecret, String baseUri) {
+    public IcebergRepository(String catalogName, String clientIdPath, String clientSecretPath, String baseUri) {
         this.catalogName = catalogName;
+        var clientId = IcebergConfig.readDockerSecret(clientIdPath);
+        var clientSecret = IcebergConfig.readDockerSecret(clientSecretPath);
 
-        // If credentials not provided, try to read from Docker secrets
-        if (clientId == null) {
-            clientId = IcebergConfig.readDockerSecret(clientId);
-        }
-
-        if (clientSecret == null) {
-            clientSecret = IcebergConfig.readDockerSecret(clientSecret);
-        }
-
-        // Fall back to auth token if direct credentials not available
+        // Credentials not available as docker secret mounts
         if (clientId == null || clientSecret == null) {
-            String authToken = IcebergConfig.getAuthToken();
-            if (authToken != null) {
-                // Parse token to extract credentials (implementation depends on token format)
-                // For this example, we'll just log that we're using token auth
-                System.out.println("Using auth token for Iceberg catalog authentication");
-
-                // In a real implementation, you might extract credentials from the token
-                // or modify the createRESTCatalog method to accept a token directly
-            } else {
-                System.out.println("WARNING: No credentials found for Iceberg catalog");
-            }
+            LOGGER.debug("Catalog created with credentials:{}:{}", clientIdPath, clientSecretPath);
+            this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientIdPath, clientSecretPath, baseUri);
+        } else {
+            LOGGER.debug("Catalog created with credentials:{}:{}", clientId, clientSecret);
+            this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientId, clientSecret, baseUri);
         }
-
-        this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientId, clientSecret, baseUri);
     }
 
     /**
@@ -88,15 +78,11 @@ public class IcebergRepository implements IBaseRepository {
      * Creates an Iceberg table from a schema definition
      */
     @Override
-    public List<String> createTable(String namespace, String tableName, Schema icebergSchema) {
+    public List<String> createTable(String namespace, String tableName, Schema icebergSchema) throws AlreadyExistsException {
 
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
-
         // Create the table using Iceberg's API
-        return catalog.createTable(
-                identifier,
-                icebergSchema,
-                PartitionSpec.unpartitioned() // Default to unpartitioned, can be customized
+        return catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned() // Default to unpartitioned, can be customized
         ).schema().columns().stream().map(field -> String.format("%1$s: %2$s", field.name(), field.type())).toList();
 
     }
@@ -113,13 +99,7 @@ public class IcebergRepository implements IBaseRepository {
         // Create a temporary file for the new data
         String filepath = table.location() + "/" + UUID.randomUUID();
         OutputFile file = table.io().newOutputFile(filepath);
-        DataWriter<GenericRecord> dataWriter =
-                Parquet.writeData(file)
-                        .schema(table.schema())
-                        .createWriterFunc(GenericParquetWriter::buildWriter)
-                        .overwrite()
-                        .withSpec(PartitionSpec.unpartitioned())
-                        .build();
+        DataWriter<GenericRecord> dataWriter = Parquet.writeData(file).schema(table.schema()).createWriterFunc(GenericParquetWriter::buildWriter).overwrite().withSpec(PartitionSpec.unpartitioned()).build();
 
         try (dataWriter) {
             for (GenericRecord record : records) {
@@ -150,9 +130,7 @@ public class IcebergRepository implements IBaseRepository {
         Table table = catalog.loadTable(identifier);
 
         try (CloseableIterable<Record> records = IcebergGenerics.read(table).build()) {
-            return Lists.newArrayList(records).stream()
-                    .map(r -> (GenericRecord) r)
-                    .collect(Collectors.toList());
+            return Lists.newArrayList(records).stream().map(r -> (GenericRecord) r).collect(Collectors.toList());
         } catch (IOException e) {
             throw new RuntimeException("Error reading from table " + tableName, e);
         }

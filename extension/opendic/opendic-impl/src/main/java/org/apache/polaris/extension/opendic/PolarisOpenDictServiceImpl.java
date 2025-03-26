@@ -107,7 +107,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
 
         var created_columns = adminService.defineSchema(schema);
         LOGGER.info("Defined new udo type {}", request.getUdoType());
-        LOGGER.info("New type: {}", created_columns);
+        LOGGER.info("Columns: {}", created_columns);
         return Response.status(Response.Status.CREATED).build();
     }
 
