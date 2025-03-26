@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.polaris.extension.opendic.persistence;
+package org.apache.polaris.extension.opendic.deprecated_persistence;
 
 import jakarta.inject.Inject;
 import org.apache.iceberg.catalog.Catalog;

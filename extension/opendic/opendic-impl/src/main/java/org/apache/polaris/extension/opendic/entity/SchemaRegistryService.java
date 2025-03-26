@@ -27,7 +27,6 @@ public class SchemaRegistryService implements ISchemaRegistryService {
 
     @Override
     public void registerSchema(String typeName, UserDefinedEntitySchema schema) {
-
     }
 
     @Override

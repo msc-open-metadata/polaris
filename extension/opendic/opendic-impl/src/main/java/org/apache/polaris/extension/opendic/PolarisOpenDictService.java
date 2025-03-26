@@ -2,9 +2,6 @@ package org.apache.polaris.extension.opendic;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -14,28 +11,30 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.extension.opendic.entity.DeprecatedUserDefinedEntity;
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
-import org.apache.polaris.extension.opendic.model.Udo;
 import org.apache.polaris.service.admin.PolarisAdminService;
+
+import java.util.List;
+import java.util.Map;
 
 public class PolarisOpenDictService extends PolarisAdminService {
 
     // Initialized in the authorize methods.
-    private PolarisResolutionManifest resolutionManifest = null;
+    private final PolarisResolutionManifest resolutionManifest = null;
 
     public PolarisOpenDictService(
-        @NotNull CallContext callContext,
-        @NotNull PolarisEntityManager entityManager,
-        @NotNull PolarisMetaStoreManager metaStoreManager,
-        @NotNull SecurityContext securityContext,
-        @NotNull PolarisAuthorizer authorizer
+            @NotNull CallContext callContext,
+            @NotNull PolarisEntityManager entityManager,
+            @NotNull PolarisMetaStoreManager metaStoreManager,
+            @NotNull SecurityContext securityContext,
+            @NotNull PolarisAuthorizer authorizer
     ) {
         super(callContext, entityManager, metaStoreManager, securityContext, authorizer);
     }
 
     // TODO: Create new OpenDictAuthorizableOperation?
-    public DeprecatedUserDefinedEntity createUdo(PolarisEntity entity) {
+    public UserDefinedEntity createUdo(PolarisEntity entity) {
         PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
         super.authorizeBasicRootOperationOrThrow(op);
 
@@ -63,10 +62,9 @@ public class PolarisOpenDictService extends PolarisAdminService {
     }
 
 
-
     // TODO: Use PolarisEntity or OpenDictEntity
-    public List<DeprecatedUserDefinedEntity> listUdoObjects(RealmContext realmContext, SecurityContext securityContext) {
+    public List<UserDefinedEntity> listUdoObjects(RealmContext realmContext, SecurityContext securityContext) {
         authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
-                return null;
+        return null;
     }
 }

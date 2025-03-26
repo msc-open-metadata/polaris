@@ -19,5 +19,9 @@
 
 package org.apache.polaris.extension.opendic.entity;
 
+/**
+ * snowflake_mapping : { create function {name} { "{a_name} {a_value}, "for a_name, a_value in args.items() $${def}$$} ) }
+ */
 public class UserDefinedPlatformMapping {
+
 }

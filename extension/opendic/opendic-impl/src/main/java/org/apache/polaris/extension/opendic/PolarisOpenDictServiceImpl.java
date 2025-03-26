@@ -4,10 +4,6 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-
-import java.util.List;
-
-import org.apache.avro.generic.GenericRecord;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -17,12 +13,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.extension.opendic.api.PolarisObjectsApiService;
-import org.apache.polaris.extension.opendic.entity.DeprecatedUserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
-import org.apache.polaris.extension.opendic.model.Udo;
-import org.apache.polaris.extension.opendic.model.Udos;
-import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,6 +69,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
         LOGGER.info("list of {} returning:", type);
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
+
     /**
      * List all UDO types
      */
@@ -94,7 +87,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     public Response createUdo(String type, CreateUdoRequest request, RealmContext realmContext, SecurityContext securityContext
     ) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
-        DeprecatedUserDefinedEntity entity = DeprecatedUserDefinedEntity.fromUdo(request.getUdo());
+        UserDefinedEntity entity = UserDefinedEntity.fromUdo(request.getUdo());
 
         adminService.createUdo(entity);
 
