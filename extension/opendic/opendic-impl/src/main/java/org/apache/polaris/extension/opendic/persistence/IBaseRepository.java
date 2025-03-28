@@ -25,14 +25,26 @@ import org.apache.iceberg.data.GenericRecord;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public interface IBaseRepository {
-    List<String> createTable(String namespace, String tableName, Schema icebergSchema);
+    String createTable(String namespace, String tableName, Schema icebergSchema);
 
     /**
      * Inserts records into an Iceberg table
      */
     void insertRecords(String namespace, String tableName, List<GenericRecord> records) throws IOException;
+
+
+    /**
+     * Inserts a single record into an Iceberg table
+     */
+    void insertRecord(String namespace, String tableName, GenericRecord record) throws IOException;
+
+    /**
+     * Creates a GenericRecord from a schema and a map of data
+     */
+    public GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
     List<String> listEntityTypes(String namespaceStr);
 
@@ -42,9 +54,14 @@ public interface IBaseRepository {
     List<GenericRecord> readRecords(String namespace, String tableName);
 
     /**
-     * Deletes an Iceberg table
+     * Deletes an Iceberg {tableName}
      */
     boolean dropTable(String namespace, String tableName);
+
+    /**
+     * Get the schema of an table {@code namespace.tableName}
+     */
+    Schema readTableSchema(String namespace, String tableName);
 
     /**
      * Get the catalog instance

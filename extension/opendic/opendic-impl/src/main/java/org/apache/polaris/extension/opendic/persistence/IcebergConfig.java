@@ -33,25 +33,21 @@ public class IcebergConfig {
             return null;
         }
     }
-
-    public static String getAuthToken() {
-        return null;
-    }
-
+    
     /**
      * Create a new preconfiguredRESTCatalog
      *
      * @return Catalog
      * @implNote <a href="https://www.tabular.io/blog/java-api-part-1/#:~:text=import,-org.apache.iceberg.catalog.Catalog;import%20org.apache.hadoop.conf.Configuration">refernce</a>
      */
-    public static Catalog createRESTCatalog(String catalogName, String clientId, String clientSecret, String basePath) {
+    public static RESTCatalog createRESTCatalog(String catalogName, String clientId, String clientSecret, String basePath) {
         Map<String, String> conf = new HashMap<>();
 
         conf.put(CatalogProperties.CATALOG_IMPL, "org.apache.iceberg.rest.RESTCatalog");
         conf.put(CatalogProperties.URI, String.format("%s/api/catalog", basePath)); // Use the passed parameter instead of hardcoded value
-        conf.put(CatalogProperties.WAREHOUSE_LOCATION, catalogName);
+        conf.put(CatalogProperties.WAREHOUSE_LOCATION, "polaris-warehouse");
         conf.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
-        conf.put(OAuth2Properties.CREDENTIAL, clientId + ":" + clientSecret);
+        conf.put(OAuth2Properties.CREDENTIAL, "root" + ":" + "s3cr3t");
         conf.put(OAuth2Properties.SCOPE, "PRINCIPAL_ROLE:ALL");
         conf.put(OAuth2Properties.OAUTH2_SERVER_URI, String.format("%s/api/catalog/v1/oauth/tokens", basePath));
         conf.put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true");

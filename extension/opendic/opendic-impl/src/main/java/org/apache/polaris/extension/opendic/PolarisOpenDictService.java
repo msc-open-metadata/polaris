@@ -2,26 +2,31 @@ package org.apache.polaris.extension.opendic;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.extension.opendic.entity.DeprecatedPolarisUserDefinedEntity;
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
+import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 public class PolarisOpenDictService extends PolarisAdminService {
 
     // Initialized in the authorize methods.
+    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(PolarisOpenDictService.class);
+    private static final Marker OPENDIC_MARKER = MarkerFactory.getMarker("OPENDIC");
     private final PolarisResolutionManifest resolutionManifest = null;
     private final IBaseRepository icebergRepository;
 
@@ -37,52 +42,38 @@ public class PolarisOpenDictService extends PolarisAdminService {
         this.icebergRepository = icebergRepository;
     }
 
-    // TODO: Create new OpenDictAuthorizableOperation?
-    public DeprecatedPolarisUserDefinedEntity createUdo(PolarisEntity entity) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
+
+    public String createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG; //FIXME placeholder
         super.authorizeBasicRootOperationOrThrow(op);
 
-        //TODO Hardcoded. Register default in schema registry and get schemas from there.
-        UserDefinedEntitySchema udoSchema = new UserDefinedEntitySchema.Builder("FUNCTION")
-                .setProperties(UserDefinedEntitySchema.propsFromMap(Map.of("def", "string", "language", "string", "version", "int", "params", "map")))
-                .build();
+        String namespace = "SYSTEM";
+        var schema = icebergRepository.readTableSchema(namespace, entity.typeName());
+        var genericRecord = icebergRepository.createGenericRecord(schema, entity.props());
+        icebergRepository.insertRecord(namespace, entity.typeName(), genericRecord);
+        return genericRecord.toString();
 
-        PolarisEntity returnedEntity =
-                PolarisEntity.of(
-                        metaStoreManager.createEntityIfNotExists(
-                                getCurrentPolarisContext(),
-                                null,
-                                new PolarisEntity.Builder(entity)
-                                        .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
-                                        .setCreateTimestamp(System.currentTimeMillis())
-                                        .build()));
-        if (returnedEntity == null) {
-            throw new AlreadyExistsException(
-                    "Cannot create Entity %s. Entity already exists or resolution failed",
-                    entity.getName());
-        }
-        return null;
     }
 
+    public List<String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //FIXME placeholder
+        super.authorizeBasicRootOperationOrThrow(op);
 
-    // TODO: Use PolarisEntity or OpenDictEntity
-    public List<DeprecatedPolarisUserDefinedEntity> listUdoObjects(RealmContext realmContext, SecurityContext securityContext) {
-        authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
-        return null;
+        return icebergRepository.listEntityTypes("SYSTEM");
     }
 
-    public List<String> defineSchema(UserDefinedEntitySchema schema) {
-//        //TODO hardcoded
-//        UserDefinedEntitySchema schema = new UserDefinedEntitySchema.Builder("FUNCTION")
-//                .setProperties(UserDefinedEntitySchema.propsFromMap(Map.of("def", "string", "language", "string", "version", "int", "params", "map")))
-//                .build();
+    public List<String> listUdosOfType(String typeName) {
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //FIXME placeholder
+        super.authorizeBasicRootOperationOrThrow(op);
 
-        var created_schema = icebergRepository.createTable("SYSTEM", schema.typeName(), UserDefinedEntitySchema.getIcebergSchema(schema));
-        if (created_schema == null) {
-            throw new AlreadyExistsException(
-                    "Cannot create UDO %s. Entity already exists or resolution failed",
-                    schema.typeName());
-        }
-        return created_schema;
+        return icebergRepository.readRecords("SYSTEM", typeName)
+                .stream()
+                .map(GenericRecord::toString)
+                .toList();
+    }
+
+    public String defineSchema(UserDefinedEntitySchema schema) throws AlreadyExistsException {
+        return icebergRepository.createTable("SYSTEM", schema.typeName(), UserDefinedEntitySchema.getIcebergSchema(schema));
+
     }
 }

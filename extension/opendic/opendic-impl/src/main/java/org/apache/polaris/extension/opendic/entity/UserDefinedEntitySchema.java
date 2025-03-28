@@ -25,6 +25,9 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
+import org.apache.polaris.extension.opendic.persistence.IcebergRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -37,6 +40,7 @@ import java.util.Map;
  * that this type expects. For now, this entity can be considered a userdefined table schema
  */
 public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType> propertyDefinitions) {
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserDefinedEntitySchema.class);
     /**
      * Creating a new user-defined entity type.
      *
@@ -48,7 +52,10 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
 
     public static UserDefinedEntitySchema fromRequest(DefineUdoRequest request){
         Preconditions.checkNotNull(request);
-        //TODO find schema from name.
+        Preconditions.checkNotNull(request.getUdoType());
+        Preconditions.checkArgument(!request.getProperties().isEmpty(), "Must define atleast 1 property");
+        Preconditions.checkNotNull(request.getProperties());
+        Preconditions.checkArgument(!request.getUdoType().isEmpty());
         return new UserDefinedEntitySchema.Builder(request.getUdoType())
                 .setProperties(propsFromMap(request.getProperties()))
                 .build();
@@ -80,7 +87,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                 result.put(propName, propType);
             }
         }
-
+        LOGGER.debug("Parsed props to schema map");
         return result;
     }
 
@@ -90,7 +97,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
             case "number" -> PropertyType.NUMBER;
             case "boolean" -> PropertyType.BOOLEAN;
             case "date" -> PropertyType.DATE;
-            case "array" -> PropertyType.ARRAY;
+            case "array", "list" -> PropertyType.ARRAY;
             case "map", "object", "variant" -> PropertyType.VARIANT;
             default -> PropertyType.STRING; // Default to STRING for unknown types
         };
@@ -106,6 +113,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         if (entityTypeSchema == null) {
             throw new IllegalArgumentException("Entity type cannot be null");
         }
+        LOGGER.debug("Getting Avro Schema for {}", entityTypeSchema.typeName);
 
         // Start building a record schema with the entity type name
         SchemaBuilder.RecordBuilder<Schema> recordBuilder = SchemaBuilder
@@ -135,6 +143,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                                  String fieldName,
                                  UserDefinedEntitySchema.PropertyType propertyType) {
 
+        LOGGER.debug("Converting property type to avro type: {} : {}", fieldName, propertyType.name());
         switch (propertyType) {
             case STRING:
                 fieldAssembler
@@ -177,7 +186,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                         .name(fieldName)
                         .type().unionOf()
                         .nullType().and()
-                        .map().values().unionOf().stringType().endUnion()
+                        .map().values().stringType()
                         .endUnion()
                         .noDefault();
                 break;

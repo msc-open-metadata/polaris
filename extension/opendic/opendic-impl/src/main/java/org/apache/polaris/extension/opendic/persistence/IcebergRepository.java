@@ -1,10 +1,7 @@
 package org.apache.polaris.extension.opendic.persistence;
 
 import org.apache.hadoop.util.Lists;
-import org.apache.iceberg.DataFile;
-import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.Schema;
-import org.apache.iceberg.Table;
+import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -16,6 +13,7 @@ import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.DataWriter;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.parquet.Parquet;
+import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +30,7 @@ import java.util.stream.Collectors;
  */
 public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
-    private final Catalog catalog;
+    private final RESTCatalog catalog;
     private final String catalogName;
 
     /**
@@ -54,37 +52,47 @@ public class IcebergRepository implements IBaseRepository {
         var clientId = IcebergConfig.readDockerSecret(clientIdPath);
         var clientSecret = IcebergConfig.readDockerSecret(clientSecretPath);
 
-        // Credentials not available as docker secret mounts
+        // Credentials not available as docker secret mounts. Pass values directly.
         if (clientId == null || clientSecret == null) {
-            LOGGER.debug("Catalog created with credentials:{}:{}", clientIdPath, clientSecretPath);
             this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientIdPath, clientSecretPath, baseUri);
         } else {
-            LOGGER.debug("Catalog created with credentials:{}:{}", clientId, clientSecret);
             this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientId, clientSecret, baseUri);
         }
+        LOGGER.info("Catalog {} created", catalogName);
     }
 
     /**
      * Helper to convert map data to GenericRecord based on schema
      * Reference: <<a href="https://www.tabular.io/blog/java-api-part-3/">Reference</a>>
      */
-    public static GenericRecord createGenericRecord(Schema schema, Map<String, Object> data) {
+    @Override
+    public GenericRecord createGenericRecord(Schema schema, Map<String, Object> data) {
         GenericRecord record = GenericRecord.create(schema);
-
         return record.copy(data);
     }
 
     /**
      * Creates an Iceberg table from a schema definition
+     *
+     * @return JSON or a string representation of the tableschema.
+     * @implNote <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public List<String> createTable(String namespace, String tableName, Schema icebergSchema) throws AlreadyExistsException {
+    public String createTable(String namespace, String tableName, Schema icebergSchema) throws AlreadyExistsException {
+        Namespace namespaceObj = Namespace.of(namespace);
 
-        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+        if (!catalog.namespaceExists(namespaceObj)) {
+            catalog.createNamespace(namespaceObj);
+        }
+
+        TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
+        if (catalog.tableExists(identifier)) {
+            var table = catalog.loadTable(identifier);
+            return SchemaParser.toJson(table.schema());
+        }
+        Table table = catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned());
         // Create the table using Iceberg's API
-        return catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned() // Default to unpartitioned, can be customized
-        ).schema().columns().stream().map(field -> String.format("%1$s: %2$s", field.name(), field.type())).toList();
-
+        return SchemaParser.toJson(table.schema());
     }
 
     /**
@@ -93,13 +101,19 @@ public class IcebergRepository implements IBaseRepository {
      */
     @Override
     public void insertRecords(String namespace, String tableName, List<GenericRecord> records) throws IOException {
-        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+        Namespace namespaceObj = Namespace.of(namespace);
+        TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
         Table table = catalog.loadTable(identifier);
 
         // Create a temporary file for the new data
         String filepath = table.location() + "/" + UUID.randomUUID();
         OutputFile file = table.io().newOutputFile(filepath);
-        DataWriter<GenericRecord> dataWriter = Parquet.writeData(file).schema(table.schema()).createWriterFunc(GenericParquetWriter::buildWriter).overwrite().withSpec(PartitionSpec.unpartitioned()).build();
+        DataWriter<GenericRecord> dataWriter = Parquet.writeData(file)
+                .schema(table.schema())
+                .createWriterFunc(GenericParquetWriter::buildWriter)
+                .overwrite()
+                .withSpec(PartitionSpec.unpartitioned())
+                .build();
 
         try (dataWriter) {
             for (GenericRecord record : records) {
@@ -110,19 +124,27 @@ public class IcebergRepository implements IBaseRepository {
         table.newAppend().appendFile(dataFile).commit();
     }
 
+    @Override
+    public void insertRecord(String namespace, String tableName, GenericRecord record) throws IOException {
+        insertRecords(namespace, tableName, List.of(record));
+    }
+
+
     /**
-     * Show tables in namespace "SYSTEM"
-     *
-     * @return
+     * Show tables in namespace namespaceStr
      */
     @Override
     public List<String> listEntityTypes(String namespaceStr) {
         Namespace namespace = Namespace.of(namespaceStr);
-        return catalog.listTables(namespace).stream().map(tableIdentifier -> catalog.loadTable(tableIdentifier).name()).toList();
+        return catalog.listTables(namespace)
+                .stream()
+                .map(tableIdentifier -> catalog.loadTable(tableIdentifier).schema())
+                .map(SchemaParser::toJson)
+                .toList();
     }
 
     /**
-     * Read records from an Iceberg table
+     * Read all records from an Iceberg with name={@code tableName} and namespace={@code namespace}
      */
     @Override
     public List<GenericRecord> readRecords(String namespace, String tableName) {
@@ -143,6 +165,12 @@ public class IcebergRepository implements IBaseRepository {
     public boolean dropTable(String namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         return catalog.dropTable(identifier);
+    }
+
+    @Override
+    public Schema readTableSchema(String namespace, String tableName) {
+        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+        return catalog.loadTable(identifier).schema();
     }
 
 

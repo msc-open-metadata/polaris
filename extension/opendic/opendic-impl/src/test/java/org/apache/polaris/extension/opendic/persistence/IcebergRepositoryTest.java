@@ -24,6 +24,7 @@ import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,7 +60,8 @@ class IcebergRepositoryTest {
         // Create instance of class containing the method
 
         // Call the method under test
-        GenericRecord record = IcebergRepository.createGenericRecord(functionSchema, data);
+        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
+        GenericRecord record = icebergRepo.createGenericRecord(functionSchema, data);
 
         // Verify the result
         assertNotNull(record);
@@ -85,7 +87,7 @@ class IcebergRepositoryTest {
 
         IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
 
-        String namespace = "SYSTEM";
+        String namespace = "TEST_SYSTEM";
         String tablename = "andreas_function";
 
         var columns = icebergRepo.createTable(namespace, tablename, functionSchema);
@@ -94,9 +96,55 @@ class IcebergRepositoryTest {
     @Test
     void testDropTable(){
         IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
-        String namespace = "SYSTEM";
-        String tablename = "carl_function";
+        String namespace = "TEST_SYSTEM";
+        String tablename = "andreas_function";
         var result = icebergRepo.dropTable(namespace, tablename);
         assertTrue(result);
+    }
+    @Test
+    void createRecordOfType(){
+        // Allow security manager operations
+        Schema functionSchema = new Schema(
+                Types.NestedField.required(1, "id", Types.UUIDType.get()),
+                Types.NestedField.required(2, "name", Types.StringType.get()),
+                Types.NestedField.required(3, "def", Types.StringType.get()),
+                Types.NestedField.required(4, "comment", Types.StringType.get()),
+                Types.NestedField.required(5, "language", Types.StringType.get()),
+                Types.NestedField.required(6, "runtime", Types.StringType.get()),
+                Types.NestedField.required(7, "params", Types.MapType.ofRequired(1000, 1001, Types.StringType.get(), Types.StringType.get())
+                ));
+
+        // Set up test data
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", 1L);
+        data.put("name", "Foo");
+        data.put("def", """
+                def foo():
+                    print("Hello World")
+                """);
+        data.put("comment", "foo function");
+        data.put("language", "PYTHON");
+        data.put("runtime", "3.10");
+        data.put("params", Map.of("arg1", "int", "arg2", "int"));
+
+
+        // Call the method under test
+        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
+        GenericRecord record = icebergRepo.createGenericRecord(functionSchema, data);
+
+        String namespace = "TEST_SYSTEM";
+        String tablename = "andreas_function";
+
+        var columns = icebergRepo.createTable(namespace, tablename, functionSchema);
+        assertNotNull(columns);
+
+        // Insert the record into the Iceberg table
+        try {
+            icebergRepo.insertRecord(namespace, tablename, record);
+        } catch (IOException e) {
+            fail("Failed to insert record: " + e.getMessage());
+        }
+        // Verify the result
+        assertNotNull(record);
     }
 }
