@@ -28,6 +28,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
     // Initialized in the authorize methods.
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(PolarisOpenDictService.class);
     private static final Marker OPENDIC_MARKER = MarkerFactory.getMarker("OPENDIC");
+    private static final String NAMESPACE = "SYSTEM";
     private final PolarisResolutionManifest resolutionManifest = null;
     private final IBaseRepository icebergRepository;
 
@@ -45,35 +46,34 @@ public class PolarisOpenDictService extends PolarisAdminService {
 
 
     public String createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG; //FIXME placeholder
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG; //placeholder
         super.authorizeBasicRootOperationOrThrow(op);
 
-        String namespace = "SYSTEM";
-        var schema = icebergRepository.readTableSchema(namespace, entity.typeName());
+        var schema = icebergRepository.readTableSchema(NAMESPACE, entity.typeName());
         var genericRecord = icebergRepository.createGenericRecord(schema, entity.props());
-        icebergRepository.insertRecord(namespace, entity.typeName(), genericRecord);
+        icebergRepository.insertRecord(NAMESPACE, entity.typeName(), genericRecord);
         return genericRecord.toString();
     }
 
     public Map<String, String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //FIXME placeholder
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //placeholder
         super.authorizeBasicRootOperationOrThrow(op);
 
-        return icebergRepository.listEntityTypes("SYSTEM");
+        return icebergRepository.listEntityTypes(NAMESPACE);
     }
 
     public List<String> listUdosOfType(String typeName) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //FIXME placeholder
+        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //placeholder
         super.authorizeBasicRootOperationOrThrow(op);
 
-        return icebergRepository.readRecords("SYSTEM", typeName)
+        return icebergRepository.readRecords(NAMESPACE, typeName)
                 .stream()
                 .map(GenericRecord::toString)
                 .toList();
     }
 
     public String defineSchema(UserDefinedEntitySchema schema) throws AlreadyExistsException {
-        return icebergRepository.createTable("SYSTEM", schema.typeName(), UserDefinedEntitySchema.getIcebergSchema(schema));
+        return icebergRepository.createTable(NAMESPACE, schema.typeName(), UserDefinedEntitySchema.getIcebergSchema(schema));
 
     }
 }

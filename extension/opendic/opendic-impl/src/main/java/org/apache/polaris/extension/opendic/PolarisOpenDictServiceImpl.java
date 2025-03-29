@@ -56,7 +56,6 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
         this.metaStoreManagerFactory = metaStoreManagerFactory;
         this.polarisAuthorizer = polarisAuthorizer;
         this.callContext = callContext;
-        // FIXME: This is a hack to set the current context for downstream calls.
         CallContext.setCurrentContext(callContext);
     }
 
@@ -71,16 +70,16 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
         PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realmContext);
         PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext
         );
-        IBaseRepository icebergRepository = new IcebergRepository("polaris");
+        IBaseRepository icebergRepository = new IcebergRepository();
         return new PolarisOpenDictService(callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer, icebergRepository
         );
     }
 
-    @Override
     /**
      * List all objects of UDO: {type}
      * Path: {@code GET /api/opendic/v1/objects/{type}}
      */
+    @Override
     public Response listUdoObjects(String type, RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
 
@@ -111,6 +110,8 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     }
 
 
+
+
     /**
      * Create a new UDO object of type {@code type}
      * Path: @code POST /api/opendic/v1/objects/{type}
@@ -129,25 +130,25 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (IllegalArgumentException e) {
-            LOGGER.info(OPENDIC_MARKER, "Failed to validate object {} against schema: {}. Error: {}, Trace: {}", request.getUdo().getName(), type, e.getMessage(), e.getStackTrace());
+            LOGGER.error(OPENDIC_MARKER, "Failed to validate object {} against schema: {}. Error: {}", request.getUdo().getName(), type, e.getMessage(), e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(Map.of("Failed to validate object against schema", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (AlreadyExistsException e) {
-            LOGGER.info(OPENDIC_MARKER, "Failed to create UDO {}: {}, Trace: {}", request.getUdo().getName(), e.getMessage(), e.getStackTrace());
+            LOGGER.error(OPENDIC_MARKER, "Failed to create UDO {}: {}", request.getUdo().getName(), e.getMessage(), e);
             return Response.status(Response.Status.CONFLICT)
                     .entity(Map.of("UDO already exists", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (IOException e) {
-            LOGGER.info(OPENDIC_MARKER, "I/O error creating UDO {}: {}, Trace: {}", request.getUdo().getName(), e.getMessage(), e.getStackTrace());
+            LOGGER.error(OPENDIC_MARKER, "I/O error creating UDO {}: {}", request.getUdo().getName(), e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(Map.of("I/O error", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (RuntimeException e) {
-            LOGGER.info(OPENDIC_MARKER, "Failed to create UDO {}: {}, Trace: {}", request.getUdo().getName(), e.getMessage(), e.getStackTrace());
+            LOGGER.error(OPENDIC_MARKER, "Failed to create UDO {}: {}", request.getUdo().getName(), e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(Map.of("Failed to create UDO", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
@@ -167,20 +168,19 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
             schema = UserDefinedEntitySchema.fromRequest(request);
             var createdSchemaString = adminService.defineSchema(schema);
             LOGGER.info(OPENDIC_MARKER, "Defined new udo type {}", request.getUdoType());
-            LOGGER.info(OPENDIC_MARKER, "Schema: {}", createdSchemaString);
 
             return Response.status(Response.Status.CREATED)
                     .entity(Map.of(request.getUdoType(), createdSchemaString))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (IllegalArgumentException e) {
-            LOGGER.info(OPENDIC_MARKER, "Failed to create schema: {}", e.getMessage());
+            LOGGER.error(OPENDIC_MARKER, "Failed to create schema: {}", e.getMessage(), e);
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(Map.of("error", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (AlreadyExistsException e) {
-            LOGGER.info(OPENDIC_MARKER, "Failed to create schema {}: {}", request.getUdoType(), e.getMessage());
+            LOGGER.error(OPENDIC_MARKER, "Failed to create schema {}: {}", request.getUdoType(), e.getMessage(), e);
             return Response.status(Response.Status.CONFLICT)
                     .entity(Map.of("error", "Schema already exists"))
                     .type(MediaType.APPLICATION_JSON)

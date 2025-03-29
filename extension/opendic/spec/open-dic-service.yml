@@ -91,6 +91,17 @@ paths:
         400:
           description: Invalid request data.
 
+    delete:
+        tags:
+            - Udo DDL
+        operationId: deleteUdo
+        description: Drop all objects of type {name}
+        responses:
+            200:
+              description: Udo deleted successfully
+            404:
+              description: Udo not found
+
   /objects/{name}/platforms:
     parameters:
       - name: name

@@ -32,12 +32,14 @@ public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
     private final RESTCatalog catalog;
     private final String catalogName;
+    private static final String DEFAULT_CLIENT_ID_PATH = "engineer_client_id";
+    private static final String DEFAULT_CLIENT_SECRET_PATH = "engineer_client_secret";
 
     /**
      * Creates a repository with the default catalog
      */
-    public IcebergRepository(String catalogName) {
-        this(IcebergConfig.RESTCatalogType.ADLS, "engineer_client_id", "engineer_client_secret");
+    public IcebergRepository() {
+        this(IcebergConfig.RESTCatalogType.ADLS, DEFAULT_CLIENT_ID_PATH, DEFAULT_CLIENT_SECRET_PATH);
     }
 
     /**
@@ -103,12 +105,10 @@ public class IcebergRepository implements IBaseRepository {
         TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
         Table table = catalog.loadTable(identifier);
 
-        LOGGER.info("Table loaded: {}", tableName);
         // Create a temporary file for the new data
         String filepath = table.location() + "/" + UUID.randomUUID();
         OutputFile file = table.io().newOutputFile(filepath);
 
-        LOGGER.info("Temporary file created: {}", filepath);
         DataWriter<GenericRecord> dataWriter =
                 Parquet.writeData(file)
                         .schema(table.schema())
@@ -116,18 +116,17 @@ public class IcebergRepository implements IBaseRepository {
                         .overwrite()
                         .withSpec(PartitionSpec.unpartitioned())
                         .build();
-        LOGGER.info("DataWriter created for file: {}", filepath);
 
         try (dataWriter) {
             for (GenericRecord record : records) {
                 dataWriter.write(record);
             }
+        LOGGER.debug("Data written to file: {}", filepath);
         }
-        LOGGER.info("Data written to file: {}", filepath);
 
         DataFile dataFile = dataWriter.toDataFile();
         table.newAppend().appendFile(dataFile).commit();
-        LOGGER.info("Data appended to table: {}", tableName);
+        LOGGER.debug("Data appended to table: {}", tableName);
     }
 
     @Override
