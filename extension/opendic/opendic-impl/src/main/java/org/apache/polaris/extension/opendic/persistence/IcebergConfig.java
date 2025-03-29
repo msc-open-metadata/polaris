@@ -40,30 +40,50 @@ public class IcebergConfig {
      * @return Catalog
      * @implNote <a href="https://www.tabular.io/blog/java-api-part-1/#:~:text=import,-org.apache.iceberg.catalog.Catalog;import%20org.apache.hadoop.conf.Configuration">refernce</a>
      */
-    public static RESTCatalog createRESTCatalog(String catalogName, String clientId, String clientSecret, String basePath) {
+    public static RESTCatalog createRESTCatalog(RESTCatalogType catalogType, String clientId, String clientSecret) {
         Map<String, String> conf = new HashMap<>();
 
         conf.put(CatalogProperties.CATALOG_IMPL, "org.apache.iceberg.rest.RESTCatalog");
-        conf.put(CatalogProperties.URI, String.format("%s/api/catalog", basePath)); // Use the passed parameter instead of hardcoded value
-        conf.put(CatalogProperties.WAREHOUSE_LOCATION, "polaris-warehouse");
-        conf.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
-        conf.put(OAuth2Properties.CREDENTIAL, "root" + ":" + "s3cr3t");
+        conf.put(CatalogProperties.URI, String.format("%s/api/catalog", catalogType.basePath)); // Use the passed parameter instead of hardcoded value
+        conf.put(CatalogProperties.WAREHOUSE_LOCATION, catalogType.catalogName);
+        conf.put(CatalogProperties.FILE_IO_IMPL, catalogType.fileIoImpl);
+        conf.put(OAuth2Properties.CREDENTIAL, clientId + ":" + clientSecret);
         conf.put(OAuth2Properties.SCOPE, "PRINCIPAL_ROLE:ALL");
-        conf.put(OAuth2Properties.OAUTH2_SERVER_URI, String.format("%s/api/catalog/v1/oauth/tokens", basePath));
+        conf.put(OAuth2Properties.OAUTH2_SERVER_URI, String.format("%s/api/catalog/v1/oauth/tokens", catalogType.basePath));
         conf.put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true");
-
-        LOGGER.debug("Creating catalog with conf:{}, {}", conf.get(CatalogProperties.URI), conf.get(OAuth2Properties.CREDENTIAL));
 
         RESTCatalog catalog = new RESTCatalog();
         Configuration config = new Configuration();
         catalog.setConf(config);
-        catalog.initialize("polaris", conf);
+        catalog.initialize(catalogType.catalogName, conf);
 
         return catalog;
     }
 
-    public static Catalog createRESTCatalog(String catalogName, String clientId, String clientSecret) {
-        return createRESTCatalog(catalogName, clientId, clientSecret, "http://polaris:8181");
+
+    public static Catalog createRESTCatalog(String clientId, String clientSecret) {
+        return createRESTCatalog(RESTCatalogType.FILE, clientId, clientSecret);
+    }
+
+    public enum RESTCatalogType {
+        ADLS("AZURE_CATALOG","org.apache.iceberg.azure.adlsv2.ADLSFileIO"),
+        FILE("polaris","org.apache.iceberg.io.ResolvingFileIO"),
+        LOCAL_FILE("polaris","org.apache.iceberg.io.ResolvingFileIO", "http://localhost:8181");
+
+        private final String catalogName;
+        private final String fileIoImpl;
+        private final String basePath;
+
+        RESTCatalogType(String catalogName, String fileIoImpl) {
+            this.catalogName = catalogName;
+            this.fileIoImpl = fileIoImpl;
+            this.basePath = "http://polaris:8181";
+        }
+        RESTCatalogType(String catalogName, String fileIoImpl, String basePath) {
+            this.catalogName = catalogName;
+            this.fileIoImpl = fileIoImpl;
+            this.basePath = basePath;
+        }
     }
 
 }

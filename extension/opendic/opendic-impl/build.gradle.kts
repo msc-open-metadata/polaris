@@ -38,8 +38,10 @@ dependencies {
     implementation("org.apache.iceberg:iceberg-aws")
     implementation("org.apache.iceberg:iceberg-parquet")
     implementation("org.apache.iceberg:iceberg-data")
-
+    implementation("org.apache.parquet:parquet-hadoop:1.15.1")
     implementation("org.apache.parquet:parquet-column:1.15.1")
+    implementation("org.apache.parquet:parquet-common:1.15.1")
+
 
     implementation(libs.hadoop.common) {
         exclude("org.slf4j", "slf4j-reload4j")

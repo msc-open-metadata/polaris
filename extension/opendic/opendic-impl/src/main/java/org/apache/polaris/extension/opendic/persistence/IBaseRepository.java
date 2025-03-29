@@ -46,7 +46,7 @@ public interface IBaseRepository {
      */
     public GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
-    List<String> listEntityTypes(String namespaceStr);
+    Map<String, String> listEntityTypes(String namespaceStr);
 
     /**
      * Read records from an Iceberg table

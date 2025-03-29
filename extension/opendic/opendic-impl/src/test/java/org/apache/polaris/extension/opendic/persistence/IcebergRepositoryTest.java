@@ -60,7 +60,7 @@ class IcebergRepositoryTest {
         // Create instance of class containing the method
 
         // Call the method under test
-        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
         GenericRecord record = icebergRepo.createGenericRecord(functionSchema, data);
 
         // Verify the result
@@ -85,7 +85,7 @@ class IcebergRepositoryTest {
                 Types.NestedField.required(7, "params", Types.MapType.ofRequired(1000, 1001, Types.StringType.get(), Types.StringType.get())
                 ));
 
-        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
 
         String namespace = "TEST_SYSTEM";
         String tablename = "andreas_function";
@@ -93,16 +93,18 @@ class IcebergRepositoryTest {
         var columns = icebergRepo.createTable(namespace, tablename, functionSchema);
         assertNotNull(columns);
     }
+
     @Test
-    void testDropTable(){
-        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
+    void testDropTable() {
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
         String namespace = "TEST_SYSTEM";
         String tablename = "andreas_function";
         var result = icebergRepo.dropTable(namespace, tablename);
         assertTrue(result);
     }
+
     @Test
-    void createRecordOfType(){
+    void createRecordOfType() {
         // Allow security manager operations
         Schema functionSchema = new Schema(
                 Types.NestedField.required(1, "id", Types.UUIDType.get()),
@@ -129,7 +131,7 @@ class IcebergRepositoryTest {
 
 
         // Call the method under test
-        IBaseRepository icebergRepo = new IcebergRepository("polaris", "root", "s3cr3t","http://localhost:8181");
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
         GenericRecord record = icebergRepo.createGenericRecord(functionSchema, data);
 
         String namespace = "TEST_SYSTEM";

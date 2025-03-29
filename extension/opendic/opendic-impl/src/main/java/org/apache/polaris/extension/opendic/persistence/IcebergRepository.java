@@ -37,26 +37,22 @@ public class IcebergRepository implements IBaseRepository {
      * Creates a repository with the default catalog
      */
     public IcebergRepository(String catalogName) {
-        this(catalogName, "engineer_client_id", "engineer_client_secret", "http://polaris:8181");
-    }
-
-    public IcebergRepository(String catalogName, String baseUri) {
-        this(catalogName, "engineer_client_id", "engineer_client_secret", baseUri);
+        this(IcebergConfig.RESTCatalogType.ADLS, "engineer_client_id", "engineer_client_secret");
     }
 
     /**
      * Creates a repository with specific client credentials
      */
-    public IcebergRepository(String catalogName, String clientIdPath, String clientSecretPath, String baseUri) {
-        this.catalogName = catalogName;
+    public IcebergRepository(IcebergConfig.RESTCatalogType catalogType, String clientIdPath, String clientSecretPath) {
+        this.catalogName = catalogType.toString();
         var clientId = IcebergConfig.readDockerSecret(clientIdPath);
         var clientSecret = IcebergConfig.readDockerSecret(clientSecretPath);
 
         // Credentials not available as docker secret mounts. Pass values directly.
         if (clientId == null || clientSecret == null) {
-            this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientIdPath, clientSecretPath, baseUri);
+            this.catalog = IcebergConfig.createRESTCatalog(IcebergConfig.RESTCatalogType.ADLS, clientIdPath, clientSecretPath);
         } else {
-            this.catalog = IcebergConfig.createRESTCatalog(catalogName, clientId, clientSecret, baseUri);
+            this.catalog = IcebergConfig.createRESTCatalog(IcebergConfig.RESTCatalogType.ADLS, clientId, clientSecret);
         }
         LOGGER.info("Catalog {} created", catalogName);
     }
@@ -101,27 +97,37 @@ public class IcebergRepository implements IBaseRepository {
      */
     @Override
     public void insertRecords(String namespace, String tableName, List<GenericRecord> records) throws IOException {
+        LOGGER.info("Inserting records into table: {}.{}", namespace, tableName);
+
         Namespace namespaceObj = Namespace.of(namespace);
         TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
         Table table = catalog.loadTable(identifier);
 
+        LOGGER.info("Table loaded: {}", tableName);
         // Create a temporary file for the new data
         String filepath = table.location() + "/" + UUID.randomUUID();
         OutputFile file = table.io().newOutputFile(filepath);
-        DataWriter<GenericRecord> dataWriter = Parquet.writeData(file)
-                .schema(table.schema())
-                .createWriterFunc(GenericParquetWriter::buildWriter)
-                .overwrite()
-                .withSpec(PartitionSpec.unpartitioned())
-                .build();
+
+        LOGGER.info("Temporary file created: {}", filepath);
+        DataWriter<GenericRecord> dataWriter =
+                Parquet.writeData(file)
+                        .schema(table.schema())
+                        .createWriterFunc(GenericParquetWriter::buildWriter)
+                        .overwrite()
+                        .withSpec(PartitionSpec.unpartitioned())
+                        .build();
+        LOGGER.info("DataWriter created for file: {}", filepath);
 
         try (dataWriter) {
             for (GenericRecord record : records) {
                 dataWriter.write(record);
             }
         }
+        LOGGER.info("Data written to file: {}", filepath);
+
         DataFile dataFile = dataWriter.toDataFile();
         table.newAppend().appendFile(dataFile).commit();
+        LOGGER.info("Data appended to table: {}", tableName);
     }
 
     @Override
@@ -134,13 +140,14 @@ public class IcebergRepository implements IBaseRepository {
      * Show tables in namespace namespaceStr
      */
     @Override
-    public List<String> listEntityTypes(String namespaceStr) {
+    public Map<String, String> listEntityTypes(String namespaceStr) {
         Namespace namespace = Namespace.of(namespaceStr);
         return catalog.listTables(namespace)
                 .stream()
-                .map(tableIdentifier -> catalog.loadTable(tableIdentifier).schema())
-                .map(SchemaParser::toJson)
-                .toList();
+                .map(TableIdentifier::name)
+                .collect(Collectors.toMap(
+                        tableName -> tableName,
+                        tableName -> SchemaParser.toJson(catalog.loadTable(TableIdentifier.of(namespace, tableName)).schema())));
     }
 
     /**

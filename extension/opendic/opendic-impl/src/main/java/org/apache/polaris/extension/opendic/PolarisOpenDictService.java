@@ -21,6 +21,7 @@ import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public class PolarisOpenDictService extends PolarisAdminService {
 
@@ -52,10 +53,9 @@ public class PolarisOpenDictService extends PolarisAdminService {
         var genericRecord = icebergRepository.createGenericRecord(schema, entity.props());
         icebergRepository.insertRecord(namespace, entity.typeName(), genericRecord);
         return genericRecord.toString();
-
     }
 
-    public List<String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
+    public Map<String, String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
         PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //FIXME placeholder
         super.authorizeBasicRootOperationOrThrow(op);
 
