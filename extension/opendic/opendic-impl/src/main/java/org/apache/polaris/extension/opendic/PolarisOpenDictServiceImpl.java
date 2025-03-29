@@ -109,12 +109,23 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
                 .build();
     }
 
-
+    /**
+     * Delete all UDOs of {@code type} and drop the schema.
+     *
+     * @param type The name/type of the UDO to delete
+     */
+    @Override
+    public Response deleteUdo(String type, RealmContext realmContext, SecurityContext securityContext) {
+        return Response.status(501).build(); // not implemented
+    }
 
 
     /**
      * Create a new UDO object of type {@code type}
      * Path: @code POST /api/opendic/v1/objects/{type}
+     *
+     * @param type    The type of the UDO to create
+     * @param request The request containing the UDO object to create (type, name, jsonprops)
      */
     @Override
     public Response createUdo(String type, CreateUdoRequest request, RealmContext realmContext, SecurityContext securityContext
@@ -159,6 +170,8 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     /**
      * Define a new UDO type
      * Path: {@code POST /api/opendic/v1/objects}
+     *
+     * @param request The request containing the UDO type and its schema properties as json
      */
     @Override
     public Response defineUdo(DefineUdoRequest request, RealmContext realmContext, SecurityContext securityContext) {

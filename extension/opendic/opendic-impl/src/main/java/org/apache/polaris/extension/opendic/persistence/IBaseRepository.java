@@ -42,14 +42,14 @@ public interface IBaseRepository {
     void insertRecord(String namespace, String tableName, GenericRecord record) throws IOException;
 
     /**
-     * Creates a GenericRecord from a schema and a map of data
+     * Creates a GenericRecord from a schema and a parsed json object
      */
     public GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
     Map<String, String> listEntityTypes(String namespaceStr);
 
     /**
-     * Read records from an Iceberg table
+     * Read records from a table
      */
     List<GenericRecord> readRecords(String namespace, String tableName);
 
