@@ -20,11 +20,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Repository for managing Iceberg tables and data operations using
@@ -88,7 +88,8 @@ public class IcebergRepository implements IBaseRepository {
         TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
         if (catalog.tableExists(identifier)) {
             var table = catalog.loadTable(identifier);
-            return SchemaParser.toJson(table.schema());
+            throw new AlreadyExistsException(
+                    String.format("Type %s already exists with schema: %s", tableName, SchemaParser.toJson(table.schema())));
         }
         Table table = catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned());
         // Create the table using Iceberg's API
@@ -156,16 +157,17 @@ public class IcebergRepository implements IBaseRepository {
      * Reference: <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public List<GenericRecord> readRecords(String namespace, String tableName) {
+    public List<Record> readRecords(String namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
+        List<Record> results = new ArrayList<>();
 
         try (CloseableIterable<Record> records = IcebergGenerics.read(table).build()) {
-            return Stream.of(records)
-                    .map(record -> (GenericRecord) record)
-                    .toList();
+            records.forEach(results::add);
+            return results;
         } catch (IOException e) {
-            throw new RuntimeException("Error reading from table " + tableName, e);
+            LOGGER.error("Error reading records from table {}: {}", tableName, e.getMessage());
+            return results;
         }
     }
 

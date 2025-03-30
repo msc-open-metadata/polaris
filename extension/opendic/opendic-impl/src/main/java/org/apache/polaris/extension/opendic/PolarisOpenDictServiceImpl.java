@@ -207,7 +207,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
         } catch (AlreadyExistsException e) {
             LOGGER.error(OPENDIC_MARKER, "Failed to create schema {}: {}", request.getUdoType(), e.getMessage(), e);
             return Response.status(Response.Status.CONFLICT)
-                    .entity(Map.of("error", "Schema already exists"))
+                    .entity(Map.of("message", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }

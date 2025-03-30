@@ -22,6 +22,7 @@ package org.apache.polaris.extension.opendic.persistence;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.data.GenericRecord;
+import org.apache.iceberg.data.Record;
 
 import java.io.IOException;
 import java.util.List;
@@ -51,7 +52,7 @@ public interface IBaseRepository {
     /**
      * Read records from a table
      */
-    List<GenericRecord> readRecords(String namespace, String tableName);
+    List<Record> readRecords(String namespace, String tableName);
 
     /**
      * Deletes an Iceberg {tableName}

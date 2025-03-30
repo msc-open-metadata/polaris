@@ -3,6 +3,7 @@ package org.apache.polaris.extension.opendic;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.data.GenericRecord;
+import org.apache.iceberg.data.Record;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
@@ -61,7 +62,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
     public List<String> listUdosOfType(String typeName) {
         return icebergRepository.readRecords(NAMESPACE, typeName)
                 .stream()
-                .map(GenericRecord::toString)
+                .map(Record::toString)
                 .toList();
     }
 
