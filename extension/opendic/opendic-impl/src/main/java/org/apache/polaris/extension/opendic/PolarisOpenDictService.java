@@ -4,7 +4,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
-import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -44,36 +43,30 @@ public class PolarisOpenDictService extends PolarisAdminService {
         this.icebergRepository = icebergRepository;
     }
 
+    public String defineSchema(UserDefinedEntitySchema schema) throws AlreadyExistsException {
+        return icebergRepository.createTable(NAMESPACE, schema.typeName(), UserDefinedEntitySchema.getIcebergSchema(schema));
+    }
+
+    public Map<String, String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
+        return icebergRepository.listEntityTypes(NAMESPACE);
+    }
 
     public String createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG; //placeholder
-        super.authorizeBasicRootOperationOrThrow(op);
-
         var schema = icebergRepository.readTableSchema(NAMESPACE, entity.typeName());
         var genericRecord = icebergRepository.createGenericRecord(schema, entity.props());
         icebergRepository.insertRecord(NAMESPACE, entity.typeName(), genericRecord);
         return genericRecord.toString();
     }
 
-    public Map<String, String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //placeholder
-        super.authorizeBasicRootOperationOrThrow(op);
-
-        return icebergRepository.listEntityTypes(NAMESPACE);
-    }
-
     public List<String> listUdosOfType(String typeName) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS; //placeholder
-        super.authorizeBasicRootOperationOrThrow(op);
-
         return icebergRepository.readRecords(NAMESPACE, typeName)
                 .stream()
                 .map(GenericRecord::toString)
                 .toList();
     }
 
-    public String defineSchema(UserDefinedEntitySchema schema) throws AlreadyExistsException {
-        return icebergRepository.createTable(NAMESPACE, schema.typeName(), UserDefinedEntitySchema.getIcebergSchema(schema));
-
+    public boolean deleteUdoOfType(String typeName) {
+        return icebergRepository.dropTable(NAMESPACE, typeName);
     }
+
 }

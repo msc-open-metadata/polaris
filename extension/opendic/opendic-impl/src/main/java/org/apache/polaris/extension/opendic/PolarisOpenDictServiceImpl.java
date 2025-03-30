@@ -100,9 +100,9 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     public Response listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
 
-        var schemaMap = adminService.listUdoTypes(realmContext, securityContext);
+        Map<String, String> schemaMap = adminService.listUdoTypes(realmContext, securityContext);
 
-        LOGGER.info(OPENDIC_MARKER, "Listing Types: {}", schemaMap);
+        LOGGER.info(OPENDIC_MARKER, "Listed Types: {}", schemaMap);
         return Response.status(Response.Status.OK)
                 .entity(schemaMap)
                 .type(MediaType.APPLICATION_JSON)
@@ -116,7 +116,22 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
      */
     @Override
     public Response deleteUdo(String type, RealmContext realmContext, SecurityContext securityContext) {
-        return Response.status(501).build(); // not implemented
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        var deleted = adminService.deleteUdoOfType(type);
+
+        if (deleted) {
+            LOGGER.info(OPENDIC_MARKER, "Deleted type: {}", type);
+            return Response.status(Response.Status.OK)
+                    .entity(Map.of("Deleted all objects of type", type))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } else {
+            LOGGER.error(OPENDIC_MARKER, "Failed to delete type: {}", type);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("Failed to delete type", type))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
     }
 
 
@@ -158,12 +173,6 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
                     .entity(Map.of("I/O error", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
-        } catch (RuntimeException e) {
-            LOGGER.error(OPENDIC_MARKER, "Failed to create UDO {}: {}", request.getUdo().getName(), e.getMessage(), e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Map.of("Failed to create UDO", e.getMessage()))
-                    .type(MediaType.APPLICATION_JSON)
-                    .build();
         }
     }
 
@@ -176,6 +185,9 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     @Override
     public Response defineUdo(DefineUdoRequest request, RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        Preconditions.checkNotNull(request.getUdoType());
+        LOGGER.info(OPENDIC_MARKER, "Defining new UDO type: {}", request.getUdoType());
+
         UserDefinedEntitySchema schema;
         try {
             schema = UserDefinedEntitySchema.fromRequest(request);

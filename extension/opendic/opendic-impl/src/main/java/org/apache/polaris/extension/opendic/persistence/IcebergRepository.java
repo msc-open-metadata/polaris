@@ -1,6 +1,5 @@
 package org.apache.polaris.extension.opendic.persistence;
 
-import org.apache.hadoop.util.Lists;
 import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -9,6 +8,8 @@ import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.IcebergGenerics;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.data.parquet.GenericParquetWriter;
+import org.apache.iceberg.expressions.Expression;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.DataWriter;
 import org.apache.iceberg.io.OutputFile;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Repository for managing Iceberg tables and data operations using
@@ -30,10 +32,10 @@ import java.util.stream.Collectors;
  */
 public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
-    private final RESTCatalog catalog;
-    private final String catalogName;
     private static final String DEFAULT_CLIENT_ID_PATH = "engineer_client_id";
     private static final String DEFAULT_CLIENT_SECRET_PATH = "engineer_client_secret";
+    private final RESTCatalog catalog;
+    private final String catalogName;
 
     /**
      * Creates a repository with the default catalog
@@ -121,7 +123,7 @@ public class IcebergRepository implements IBaseRepository {
             for (GenericRecord record : records) {
                 dataWriter.write(record);
             }
-        LOGGER.debug("Data written to file: {}", filepath);
+            LOGGER.debug("Data written to file: {}", filepath);
         }
 
         DataFile dataFile = dataWriter.toDataFile();
@@ -151,6 +153,7 @@ public class IcebergRepository implements IBaseRepository {
 
     /**
      * Read all records from an Iceberg with name={@code tableName} and namespace={@code namespace}
+     * Reference: <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
     public List<GenericRecord> readRecords(String namespace, String tableName) {
@@ -158,7 +161,9 @@ public class IcebergRepository implements IBaseRepository {
         Table table = catalog.loadTable(identifier);
 
         try (CloseableIterable<Record> records = IcebergGenerics.read(table).build()) {
-            return Lists.newArrayList(records).stream().map(r -> (GenericRecord) r).collect(Collectors.toList());
+            return Stream.of(records)
+                    .map(record -> (GenericRecord) record)
+                    .toList();
         } catch (IOException e) {
             throw new RuntimeException("Error reading from table " + tableName, e);
         }
@@ -171,6 +176,25 @@ public class IcebergRepository implements IBaseRepository {
     public boolean dropTable(String namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         return catalog.dropTable(identifier);
+    }
+
+
+    /**
+     * Deletes a single record from an Iceberg table
+     *
+     * @param tableName    The name of the table to delete from. Example: "function"
+     * @param idColumnName The name of the ID column. Example: Name
+     * @param idValue      The value in id column of the record to delete. Example: "andfunc"
+     */
+    @Override
+    public void deleteSingleRecord(String namespace, String tableName, String idColumnName, Object idValue) {
+        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+        Table table = catalog.loadTable(identifier);
+
+        Expression deleteExpr = Expressions.equal(idColumnName, idValue);
+
+        table.newDelete().deleteFromRowFilter(deleteExpr).commit();
+
     }
 
     @Override

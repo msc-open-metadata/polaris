@@ -59,6 +59,15 @@ public interface IBaseRepository {
     boolean dropTable(String namespace, String tableName);
 
     /**
+     * Deletes a single record from an Iceberg table
+     *
+     * @param tableName    The name of the table to delete from. Example: "function"
+     * @param idColumnName The name of the ID column. Example: Name
+     * @param idValue      The value in id column of the record to delete. Example: "andfunc"
+     */
+    public void deleteSingleRecord(String namespace, String tableName, String idColumnName, Object idValue);
+
+    /**
      * Get the schema of an table {@code namespace.tableName}
      */
     Schema readTableSchema(String namespace, String tableName);
