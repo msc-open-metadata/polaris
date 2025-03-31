@@ -128,7 +128,7 @@ paths:
         404:
           description: Udo not found
 
-  /objects/{name}/{platform}:
+  /objects/{name}/platforms/{platform}:
     parameters:
       - name: name
         in: path
@@ -175,7 +175,7 @@ paths:
         409:
           description: Platform mapping already exists for object
 
-  /objects/{name}/{platform}/pull:
+  /objects/{name}/platforms/{platform}/pull:
     parameters:
       - name: name
         in: path
@@ -296,45 +296,45 @@ components:
       type: object
       description: A supported platform.
       properties:
+        typeName:
+          type: string
+          description: The type of the object. Examples - Function, User, Role, Policy
+          example: Function
         platformName:
           example: SNOWFLAKE
           type: string
-          enum:
-            - SNOWFLAKE
-            - SPARK
           description: The name of the platform
-        objectType:
+        syntax:
           type: string
-          description: The type of the object. Examples - Function, User, Role, Policy
+          description: The syntax of the object in the platform.
+          example: |
+            CREATE OR ALTER <type> <name>(<args>)
+                RETURNS <return_type>
+                LANGUAGE <language>
+                RUNTIME = <runtime>
+                PACKAGES = (<packages>)
+                HANDLER = '<function_name>'
+            AS $$
+            <def>
+            $$
+        objectDumpMap:
+            type: object
+            description: An optional mapping of the object properties to the platform-specific syntax.
+            example: |
+              {
+                "args": { "type": "map", "format": "<key> <value>", "delimiter": ", " },
+                "packages": { "type": "list", "format": "'<item>'", "delimiter": ", " },
+              }
+            additionalProperties:
+                type: object
+                description: The name of the property in the platform-specific syntax.
+                additionalProperties:
+                  type: string
+                  description: The format of the property in the platform-specific syntax.
       required:
         - name
-      discriminator:
-        propertyName: platformName
-        mapping:
-          SNOWFLAKE: "#/components/schemas/SnowflakePlatformMapping"
-          SPARK: "#/components/schemas/SparkPlatformMapping"
-
-    SnowflakePlatformMapping:
-      type: object
-      description: The mapping details for the Snowflake platform.
-      properties:
-        jsonMapping:
-          type: object
-          additionalProperties: true
-          example: { "todo": "actual example", "name": "function_name", "def": "as", "language": "lang" }
-      required:
-        - jsonMapping
-
-    SparkPlatformMapping:
-      type: object
-      description: The mapping details for the Spark platform.
-      properties:
-        jsonMapping:
-          type: object
-          additionalProperties: true
-          example: { "todo": "concrete example", "name": "function_name", "def": "as", "language": "lang" }
-      required:
-        - jsonMapping
+        - platformName
+        - syntax
 
     CreatePlatformMappingRequest:
       type: object

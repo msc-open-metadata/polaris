@@ -18,6 +18,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.extension.opendic.api.PolarisObjectsApiService;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
+import org.apache.polaris.extension.opendic.model.CreatePlatformMappingRequest;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
 import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
@@ -211,6 +212,43 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
-
     }
+
+    /**
+     * List all platform mappings for a specific object {@code type}
+     * Path: {@code GET /api/opendic/v1/objects/{type}/platforms}
+     *
+     * @param type object type name.
+     */
+    public Response listPlatformsForUdo(String type, RealmContext realmContext, SecurityContext securityContext) {
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    }
+
+    /**
+     * Define mew platform for a specific object {@code type}
+     * Path: {@code POST /api/opendic/v1/objects/{type}/platforms/{platform}}
+     *
+     * @param type                         object type name.
+     * @param platform                     the name of the platform
+     * @param createPlatformMappingRequest the request to create the platform mapping. Contains template syntax and optional objectDumpMap - Primarily for collections
+     */
+    @Override
+    public Response createPlatformMappingForUdo(String type, String platform, CreatePlatformMappingRequest createPlatformMappingRequest, RealmContext realmContext, SecurityContext securityContext) {
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    }
+
+    /**
+     * Get the platform mapping for a specifc object {@code type} and {@code platform}
+     * Path: {@code GET /api/opendic/v1/objects/{type}/platforms/{platform}}
+     *
+     * @param type     object type name.
+     * @param platform the name of the platform
+     */
+    public Response getPlatformMappingForUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    }
+
+
+
+
 }
