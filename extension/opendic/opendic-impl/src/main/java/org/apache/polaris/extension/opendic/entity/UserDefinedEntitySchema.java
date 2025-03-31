@@ -25,7 +25,6 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
-import org.apache.polaris.extension.opendic.persistence.IcebergRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +40,7 @@ import java.util.Map;
  */
 public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType> propertyDefinitions) {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserDefinedEntitySchema.class);
+
     /**
      * Creating a new user-defined entity type.
      *
@@ -50,7 +50,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
     public UserDefinedEntitySchema {
     }
 
-    public static UserDefinedEntitySchema fromRequest(DefineUdoRequest request){
+    public static UserDefinedEntitySchema fromRequest(DefineUdoRequest request) {
         Preconditions.checkNotNull(request);
         Preconditions.checkNotNull(request.getUdoType());
         Preconditions.checkArgument(!request.getProperties().isEmpty(), "Must define atleast 1 property");
@@ -108,6 +108,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
      *
      * @param entityTypeSchema The user-defined entity type
      * @return An Avro Schema representing the entity type
+     * TODO: Replace completely with getIcebergSchema
      */
     public static Schema getAvroSchema(UserDefinedEntitySchema entityTypeSchema) {
         if (entityTypeSchema == null) {
@@ -115,13 +116,16 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         }
         LOGGER.debug("Getting Avro Schema for {}", entityTypeSchema.typeName);
 
-        // Start building a record schema with the entity type name
         SchemaBuilder.RecordBuilder<Schema> recordBuilder = SchemaBuilder
                 .record(entityTypeSchema.typeName())
                 .namespace("org.apache.polaris.extension.opendic.entity");
 
-        // Create fields builder
         SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
+        // Add the name of the object
+        fieldAssembler
+                .name("name")
+                .type().stringType()
+                .noDefault();
 
         // Add each property as a field
         for (Map.Entry<String, UserDefinedEntitySchema.PropertyType> entry :
@@ -133,6 +137,19 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
             // Add the field with appropriate type
             addField(fieldAssembler, propName, propType);
         }
+        // Add default fields
+        fieldAssembler
+                .name("createdTimeStamp")
+                .type().longType()
+                .noDefault();
+        fieldAssembler
+                .name("lastUpdatedTimeStamp")
+                .type().longType()
+                .noDefault();
+        fieldAssembler
+                .name("entityVersion")
+                .type().intType()
+                .noDefault();
         return fieldAssembler.endRecord();
     }
 

@@ -18,6 +18,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.extension.opendic.api.PolarisObjectsApiService;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
+import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.model.CreatePlatformMappingRequest;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
 import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
@@ -220,6 +221,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
      *
      * @param type object type name.
      */
+    @Override
     public Response listPlatformsForUdo(String type, RealmContext realmContext, SecurityContext securityContext) {
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
@@ -234,7 +236,23 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
      */
     @Override
     public Response createPlatformMappingForUdo(String type, String platform, CreatePlatformMappingRequest createPlatformMappingRequest, RealmContext realmContext, SecurityContext securityContext) {
-        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+        LOGGER.info(OPENDIC_MARKER, "Creating platform mapping {} --> {} : {}", type, platform, createPlatformMappingRequest);
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        Preconditions.checkNotNull(createPlatformMappingRequest.getPlatformMapping());
+        var userdefinedPlatformMapping = UserDefinedPlatformMapping.fromRequest(type, platform, createPlatformMappingRequest);
+        try {
+            var created = adminService.createPlatformMapping(userdefinedPlatformMapping);
+            return Response.status(Response.Status.CREATED)
+                    .entity(Map.of("Created" + type + "-->" + platform + "mapping", created))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (IOException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to create platform mapping {}: {}", type, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("Failed to create platform mapping", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
     }
 
     /**
@@ -244,11 +262,10 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
      * @param type     object type name.
      * @param platform the name of the platform
      */
+    @Override
     public Response getPlatformMappingForUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
-
-
 
 
 }

@@ -50,6 +50,16 @@ public record UserDefinedEntity(String typeName,
 
     }
 
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", objectName);
+        map.putAll(props);
+        map.put("createdTimeStamp", createdTimeStamp);
+        map.put("lastUpdatedTimeStamp", lastUpdatedTimeStamp);
+        map.put("entityVersion", entityVersion);
+        return map;
+    }
+
     public static class Builder {
         private final String typeName;
         private final String objectName;

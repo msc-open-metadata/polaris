@@ -13,6 +13,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
+import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
 
     public String createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
         var schema = icebergRepository.readTableSchema(NAMESPACE, entity.typeName());
-        var genericRecord = icebergRepository.createGenericRecord(schema, entity.props());
+        var genericRecord = icebergRepository.createGenericRecord(schema, entity.toMap());
         icebergRepository.insertRecord(NAMESPACE, entity.typeName(), genericRecord);
         return genericRecord.toString();
     }
@@ -68,6 +69,14 @@ public class PolarisOpenDictService extends PolarisAdminService {
 
     public boolean deleteUdoOfType(String typeName) {
         return icebergRepository.dropTable(NAMESPACE, typeName);
+    }
+
+    public String createPlatformMapping(UserDefinedPlatformMapping mappingEntity) throws IOException {
+        var schema = mappingEntity.icebergSchema();
+        icebergRepository.createTableIfNotExists(NAMESPACE, "platform_mappings", schema);
+        var genericRecord = icebergRepository.createGenericRecord(schema, mappingEntity.toObjMap());
+        icebergRepository.insertRecord(NAMESPACE, mappingEntity.typeName(), genericRecord);
+        return genericRecord.toString();
     }
 
 }

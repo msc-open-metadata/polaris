@@ -1,5 +1,6 @@
 package org.apache.polaris.extension.opendic.persistence;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -41,7 +42,7 @@ public class IcebergRepository implements IBaseRepository {
      * Creates a repository with the default catalog
      */
     public IcebergRepository() {
-        this(IcebergConfig.RESTCatalogType.ADLS, DEFAULT_CLIENT_ID_PATH, DEFAULT_CLIENT_SECRET_PATH);
+        this(IcebergConfig.RESTCatalogType.FILE, DEFAULT_CLIENT_ID_PATH, DEFAULT_CLIENT_SECRET_PATH);
     }
 
     /**
@@ -54,9 +55,9 @@ public class IcebergRepository implements IBaseRepository {
 
         // Credentials not available as docker secret mounts. Pass values directly.
         if (clientId == null || clientSecret == null) {
-            this.catalog = IcebergConfig.createRESTCatalog(IcebergConfig.RESTCatalogType.ADLS, clientIdPath, clientSecretPath);
+            this.catalog = IcebergConfig.createRESTCatalog(catalogType, clientIdPath, clientSecretPath);
         } else {
-            this.catalog = IcebergConfig.createRESTCatalog(IcebergConfig.RESTCatalogType.ADLS, clientId, clientSecret);
+            this.catalog = IcebergConfig.createRESTCatalog(catalogType, clientId, clientSecret);
         }
         LOGGER.info("Catalog {} created", catalogName);
     }
@@ -94,6 +95,21 @@ public class IcebergRepository implements IBaseRepository {
         Table table = catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned());
         // Create the table using Iceberg's API
         return SchemaParser.toJson(table.schema());
+    }
+
+    @Override
+    public void createTableIfNotExists(String namespace, String tableName, Schema icebergSchema) {
+        Namespace namespaceObj = Namespace.of(namespace);
+
+        if (!catalog.namespaceExists(namespaceObj)) {
+            catalog.createNamespace(namespaceObj);
+        }
+        TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
+        if (catalog.tableExists(identifier)) {
+            catalog.loadTable(identifier);
+        } else {
+            catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned());
+        }
     }
 
     /**
@@ -197,6 +213,11 @@ public class IcebergRepository implements IBaseRepository {
 
         table.newDelete().deleteFromRowFilter(deleteExpr).commit();
 
+    }
+
+    @Override
+    public void alterAddColumn(String namespace, String tableName, String columnName, String columnType) {
+        throw new NotImplementedException();
     }
 
     @Override

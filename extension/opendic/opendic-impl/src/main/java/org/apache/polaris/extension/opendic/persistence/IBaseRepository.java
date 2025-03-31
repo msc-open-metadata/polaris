@@ -31,6 +31,8 @@ import java.util.Map;
 public interface IBaseRepository {
     String createTable(String namespace, String tableName, Schema icebergSchema);
 
+    void createTableIfNotExists(String namespace, String tableName, Schema icebergSchema);
+
     /**
      * Inserts records into an Iceberg table
      */
@@ -45,7 +47,7 @@ public interface IBaseRepository {
     /**
      * Creates a GenericRecord from a schema and a parsed json object
      */
-    public GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
+    GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
     Map<String, String> listEntityTypes(String namespaceStr);
 
@@ -60,18 +62,20 @@ public interface IBaseRepository {
     boolean dropTable(String namespace, String tableName);
 
     /**
+     * Get the schema of an table {@code namespace.tableName}
+     */
+    Schema readTableSchema(String namespace, String tableName);
+
+    /**
      * Deletes a single record from an Iceberg table
      *
      * @param tableName    The name of the table to delete from. Example: "function"
      * @param idColumnName The name of the ID column. Example: Name
      * @param idValue      The value in id column of the record to delete. Example: "andfunc"
      */
-    public void deleteSingleRecord(String namespace, String tableName, String idColumnName, Object idValue);
+    void deleteSingleRecord(String namespace, String tableName, String idColumnName, Object idValue);
 
-    /**
-     * Get the schema of an table {@code namespace.tableName}
-     */
-    Schema readTableSchema(String namespace, String tableName);
+    void alterAddColumn(String namespace, String tableName, String columnName, String columnType);
 
     /**
      * Get the catalog instance
