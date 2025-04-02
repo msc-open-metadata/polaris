@@ -16,7 +16,7 @@ import java.util.Map;
 
 
 public class IcebergConfig {
-    private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(IcebergConfig.class);
 
     /**
      * Read a secret from Docker secret store
