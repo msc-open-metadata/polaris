@@ -269,17 +269,40 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService, Pol
     }
 
     @Override
-    public Response listMappingsForPlatform(String platform,RealmContext realmContext,SecurityContext securityContext){
+    public Response listMappingsForPlatform(String platform, RealmContext realmContext, SecurityContext securityContext) {
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 
     @Override
-    public Response listPlatforms(RealmContext realmContext,SecurityContext securityContext) {
-        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    public Response listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+
+        Map<String, String> schemaMap = adminService.listPlatforms(realmContext, securityContext);
+
+        LOGGER.info(OPENDIC_MARKER, "Listed Platforms: {}", schemaMap);
+        return Response.status(Response.Status.OK)
+                .entity(schemaMap)
+                .type(MediaType.APPLICATION_JSON)
+                .build();
     }
 
-    public Response deleteMappingsForPlatform(String platform,RealmContext realmContext,SecurityContext securityContext){
-        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    @Override
+    public Response deleteMappingsForPlatform(String platform, RealmContext realmContext, SecurityContext securityContext) {
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        boolean deleted = adminService.deleteMappingsForPlatform(platform);
+        if (deleted) {
+            LOGGER.info(OPENDIC_MARKER, "Deleted mappings for platform: {}", platform);
+            return Response.status(Response.Status.OK)
+                    .entity(Map.of("Deleted all mappings for platform", platform))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } else {
+            LOGGER.error(OPENDIC_MARKER, "Failed to delete mappings for platform: {}", platform);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("Failed to delete mappings for platform", platform))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
     }
 
 
