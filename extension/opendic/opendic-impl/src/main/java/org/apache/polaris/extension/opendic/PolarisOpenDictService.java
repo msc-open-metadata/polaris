@@ -2,7 +2,6 @@ package org.apache.polaris.extension.opendic;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
-import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -11,7 +10,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.extension.opendic.api.PolarisPlatformsApiService;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
@@ -52,7 +50,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
     }
 
     public Map<String, String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
-        return icebergRepository.listEntityTypes(NAMESPACE);
+        return icebergRepository.listTables(NAMESPACE);
     }
 
     public String createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
@@ -76,17 +74,25 @@ public class PolarisOpenDictService extends PolarisAdminService {
 
     public String createPlatformMapping(UserDefinedPlatformMapping mappingEntity) throws IOException {
         var schema = mappingEntity.icebergSchema();
-        icebergRepository.createTableIfNotExists(NAMESPACE+"."+PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), schema);
+        icebergRepository.createTableIfNotExists(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), schema);
         var genericRecord = mappingEntity.toGenericRecord();
-        icebergRepository.insertRecord(NAMESPACE+"."+PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), genericRecord);
+        icebergRepository.insertRecord(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), genericRecord);
         return genericRecord.toString();
     }
 
     public boolean deleteMappingsForPlatform(String platformName) {
-        return icebergRepository.dropTable(NAMESPACE+"."+PLATFORM_MAPPINGS_NAMESPACE, platformName);
-    }
-    public Map<String, String> listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
-        return icebergRepository.listEntityTypes(NAMESPACE+"."+PLATFORM_MAPPINGS_NAMESPACE);
+        return icebergRepository.dropTable(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, platformName);
     }
 
+    public List<String> listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
+        return icebergRepository.listTables(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE)
+                .keySet().stream().toList();
+    }
+
+    public List<String> listMappingsForPlatform(String platformName) {
+        return icebergRepository.readRecords(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, platformName)
+                .stream()
+                .map(Record::toString)
+                .toList();
+    }
 }

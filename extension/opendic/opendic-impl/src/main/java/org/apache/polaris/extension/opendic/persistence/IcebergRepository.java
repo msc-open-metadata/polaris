@@ -158,7 +158,7 @@ public class IcebergRepository implements IBaseRepository {
      * Show tables in namespace namespaceStr
      */
     @Override
-    public Map<String, String> listEntityTypes(String namespaceStr) {
+    public Map<String, String> listTables(String namespaceStr) {
         Namespace namespace = Namespace.of(namespaceStr);
         return catalog.listTables(namespace)
                 .stream()

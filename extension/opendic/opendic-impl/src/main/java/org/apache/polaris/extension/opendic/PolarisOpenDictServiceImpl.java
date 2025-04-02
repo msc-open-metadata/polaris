@@ -3,6 +3,7 @@ package org.apache.polaris.extension.opendic;
 import com.google.common.base.Preconditions;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -131,7 +132,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService, Pol
         } else {
             LOGGER.error(OPENDIC_MARKER, "Failed to delete type: {}", type);
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("Failed to delete type", type))
+                    .entity(Map.of("Failed to delete type. No such type", type))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
@@ -270,14 +271,28 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService, Pol
 
     @Override
     public Response listMappingsForPlatform(String platform, RealmContext realmContext, SecurityContext securityContext) {
-        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+        PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
+        try {
+            var schemaMap = adminService.listMappingsForPlatform(platform);
+            LOGGER.info(OPENDIC_MARKER, "Listed mappings for platform {}: {}", platform, schemaMap);
+            return Response.status(Response.Status.OK)
+                    .entity(schemaMap)
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (NotFoundException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to list mappings for platform {}: {}", platform, e.getMessage(), e);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("Platform not found", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
     }
 
     @Override
     public Response listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
 
-        Map<String, String> schemaMap = adminService.listPlatforms(realmContext, securityContext);
+        List<String> schemaMap = adminService.listPlatforms(realmContext, securityContext);
 
         LOGGER.info(OPENDIC_MARKER, "Listed Platforms: {}", schemaMap);
         return Response.status(Response.Status.OK)
@@ -299,11 +314,9 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService, Pol
         } else {
             LOGGER.error(OPENDIC_MARKER, "Failed to delete mappings for platform: {}", platform);
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("Failed to delete mappings for platform", platform))
+                    .entity(Map.of("No mappings for platform snowflake found", platform))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
     }
-
-
 }

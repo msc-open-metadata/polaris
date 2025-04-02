@@ -49,7 +49,7 @@ public interface IBaseRepository {
      */
     GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
-    Map<String, String> listEntityTypes(String namespaceStr);
+    Map<String, String> listTables(String namespaceStr);
 
     /**
      * Read records from a table
