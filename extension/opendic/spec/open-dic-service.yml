@@ -15,7 +15,7 @@ servers:
         description: Host address
         default: localhost
 security:
-  - OAuth2: []
+  - OAuth2: [ ]
 
 paths:
   /objects:
@@ -92,15 +92,15 @@ paths:
           description: Invalid request data.
 
     delete:
-        tags:
-            - Udo DDL
-        operationId: deleteUdo
-        description: Drop all objects of type {name}
-        responses:
-            200:
-              description: Udo deleted successfully
-            404:
-              description: Udo not found
+      tags:
+        - Udo DDL
+      operationId: deleteUdo
+      description: Drop all objects of type {name}
+      responses:
+        200:
+          description: Udo deleted successfully
+        404:
+          description: Udo not found
 
   /objects/{name}/platforms:
     parameters:
@@ -270,7 +270,7 @@ components:
           description: The name of the object
         props:
           type: object
-          additionalProperties: {type: object}
+          additionalProperties: { type: object }
         createTimestamp:
           type: integer
           format: "int64"
@@ -318,19 +318,33 @@ components:
             <def>
             $$
         objectDumpMap:
+          type: object
+          description: An optional mapping of the object properties to the platform-specific syntax.
+          example: |
+            {
+              "args": { "type": "map", "format": "<key> <value>", "delimiter": ", " },
+              "packages": { "type": "list", "format": "'<item>'", "delimiter": ", " }
+            }
+          additionalProperties:
             type: object
-            description: An optional mapping of the object properties to the platform-specific syntax.
-            example: |
-              {
-                "args": { "type": "map", "format": "<key> <value>", "delimiter": ", " },
-                "packages": { "type": "list", "format": "'<item>'", "delimiter": ", " },
-              }
-            additionalProperties:
-                type: object
-                description: The name of the property in the platform-specific syntax.
-                additionalProperties:
-                  type: string
-                  description: The format of the property in the platform-specific syntax.
+            description: Mapping configuration for a property
+            properties:
+              propType:
+                type: string
+                description: The type of the property.
+                example: map
+              format:
+                type: string
+                description: The format of the property.
+                example: "<key> <value>"
+              delimiter:
+                type: string
+                description: The delimiter used in the property.
+                example: ", "
+            required:
+              - propType
+              - format
+              - delimiter
       required:
         - name
         - platformName

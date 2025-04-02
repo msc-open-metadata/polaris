@@ -2,8 +2,10 @@ package org.apache.polaris.extension.opendic.entity;
 
 import com.google.common.base.Preconditions;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.extension.opendic.model.CreatePlatformMappingRequest;
+import org.apache.polaris.extension.opendic.model.PlatformMappingObjectDumpMapValue;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
@@ -41,7 +43,7 @@ import java.util.Map;
 public record UserDefinedPlatformMapping(String typeName,
                                          String platformName,
                                          String templateSyntax,
-                                         Map<String, Map<String, String>> objectDumpMap,
+                                         Map<String, PlatformMappingObjectDumpMapValue> objectDumpMap,
                                          Schema icebergSchema,
                                          OffsetDateTime createdTimeStamp,
                                          OffsetDateTime lastUpdatedTimeStamp,
@@ -53,28 +55,34 @@ public record UserDefinedPlatformMapping(String typeName,
         Preconditions.checkNotNull(request.getPlatformMapping());
         Preconditions.checkArgument(!request.getPlatformMapping().getSyntax().isEmpty(), "Syntax cannot be empty");
 
-        return new Builder(typeName, platformName, request.getPlatformMapping().getSyntax(), 1)
-                .setIcbergSchema(UserDefinedPlatformMapping.getIcebergSchema())
+        return builder(typeName, platformName, request.getPlatformMapping().getSyntax(), 1)
+                .setIcebergSchema(UserDefinedPlatformMapping.getIcebergSchema())
+                .setObjectDumpMap(request.getPlatformMapping().getObjectDumpMap())
                 .build();
     }
 
     public static Schema getIcebergSchema() {
-        return new Schema(
-                Types.NestedField.required(1, "type", org.apache.iceberg.types.Types.StringType.get()),
-                Types.NestedField.required(2, "platform", org.apache.iceberg.types.Types.StringType.get()),
-                Types.NestedField.required(3, "syntax", org.apache.iceberg.types.Types.StringType.get()),
-                Types.NestedField.optional(4, "object_dump_map", org.apache.iceberg.types.Types.MapType.ofOptional(5, 6,
-                        org.apache.iceberg.types.Types.StringType.get(),
-                        org.apache.iceberg.types.Types.StructType.of(
-                                Types.NestedField.required(7, "type", org.apache.iceberg.types.Types.StringType.get()),
-                                Types.NestedField.required(8, "format", org.apache.iceberg.types.Types.StringType.get()),
-                                Types.NestedField.optional(9, "delimiter", org.apache.iceberg.types.Types.StringType.get())
-                        )
-                )),
-                Types.NestedField.optional(10, "created_time", org.apache.iceberg.types.Types.TimestampType.withZone()),
-                Types.NestedField.optional(11, "last_updated_time", org.apache.iceberg.types.Types.TimestampType.withZone()),
-                Types.NestedField.optional(12, "entity_version", org.apache.iceberg.types.Types.IntegerType.get())
+        var dumpStructSchema = Types.StructType.of(
+                Types.NestedField.required(7, "type", Types.StringType.get()),
+                Types.NestedField.optional(8, "format", Types.StringType.get()),
+                Types.NestedField.optional(9, "delimiter", Types.StringType.get())
         );
+        return new Schema(
+                Types.NestedField.required(1, "type", Types.StringType.get()),
+                Types.NestedField.required(2, "platform", Types.StringType.get()),
+                Types.NestedField.required(3, "syntax", Types.StringType.get()),
+                Types.NestedField.optional(4, "object_dump_map", Types.MapType.ofOptional(5, 6,
+                        Types.StringType.get(),
+                        dumpStructSchema
+                )),
+                Types.NestedField.optional(10, "created_time", Types.TimestampType.withZone()),
+                Types.NestedField.optional(11, "last_updated_time", Types.TimestampType.withZone()),
+                Types.NestedField.optional(12, "entity_version", Types.IntegerType.get())
+        );
+    }
+
+    public static Builder builder(String typeName, String platformName, String templateSyntax, int entityVersion) {
+        return new Builder(typeName, platformName, templateSyntax, entityVersion);
     }
 
     /**
@@ -106,12 +114,20 @@ public record UserDefinedPlatformMapping(String typeName,
         result.put("entity_version", entityVersion);
         return result;
     }
+    /**
+     * Helper to convert map data to GenericRecord based on schema
+     * Reference: <<a href="https://www.tabular.io/blog/java-api-part-3/">Reference</a>>
+     */
+    public GenericRecord toGenericRecord() {
+        var genericRecord =  GenericRecord.create(icebergSchema);
+        return genericRecord.copy(toObjMap());
+    }
 
-    public static class Builder {
+    public static final class Builder {
         private final String typeName;
         private final String platformName;
         private final String templateSyntax;
-        private final Map<String, Map<String, String>> objectDumpMap = new HashMap<>();
+        private final Map<String, PlatformMappingObjectDumpMapValue> objectDumpMap = new HashMap<>();
         private final int entityVersion;
         private Schema icebergSchema;
 
@@ -122,12 +138,12 @@ public record UserDefinedPlatformMapping(String typeName,
             this.entityVersion = entityVersion;
         }
 
-        public Builder setObjectDumpMap(Map<String, Map<String, String>> objectDumpMap) {
+        public Builder setObjectDumpMap(Map<String, PlatformMappingObjectDumpMapValue> objectDumpMap) {
             this.objectDumpMap.putAll(objectDumpMap);
             return this;
         }
 
-        public Builder setIcbergSchema(Schema schema) {
+        public Builder setIcebergSchema(Schema schema) {
             icebergSchema = schema;
             return this;
         }
@@ -136,7 +152,6 @@ public record UserDefinedPlatformMapping(String typeName,
             Preconditions.checkNotNull(typeName);
             Preconditions.checkNotNull(platformName);
             Preconditions.checkNotNull(templateSyntax);
-            setObjectDumpMap(objectDumpMap);
             return new UserDefinedPlatformMapping(typeName, platformName, templateSyntax, objectDumpMap, icebergSchema, OffsetDateTime.now(), OffsetDateTime.now(), entityVersion);
         }
     }
