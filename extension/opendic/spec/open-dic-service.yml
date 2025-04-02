@@ -346,7 +346,7 @@ components:
               - format
               - delimiter
       required:
-        - name
+        - typeName
         - platformName
         - syntax
 

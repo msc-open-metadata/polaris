@@ -43,7 +43,7 @@ import java.util.Map;
 public record UserDefinedPlatformMapping(String typeName,
                                          String platformName,
                                          String templateSyntax,
-                                         Map<String, PlatformMappingObjectDumpMapValue> objectDumpMap,
+                                         Map<String, Map<String, String>> objectDumpMap,
                                          Schema icebergSchema,
                                          OffsetDateTime createdTimeStamp,
                                          OffsetDateTime lastUpdatedTimeStamp,
@@ -55,17 +55,34 @@ public record UserDefinedPlatformMapping(String typeName,
         Preconditions.checkNotNull(request.getPlatformMapping());
         Preconditions.checkArgument(!request.getPlatformMapping().getSyntax().isEmpty(), "Syntax cannot be empty");
 
+        Map<String, Map<String, String>> objectDumpMap = getObjectAsMapOfMap(request);
+
+
         return builder(typeName, platformName, request.getPlatformMapping().getSyntax(), 1)
                 .setIcebergSchema(UserDefinedPlatformMapping.getIcebergSchema())
-                .setObjectDumpMap(request.getPlatformMapping().getObjectDumpMap())
+                .setObjectDumpMap(objectDumpMap)
                 .build();
     }
 
+    private static Map<String, Map<String, String>> getObjectAsMapOfMap(CreatePlatformMappingRequest request) {
+        Map<String, Map<String, String>> objectDumpMap = new HashMap<>();
+
+        for (Map.Entry<String, PlatformMappingObjectDumpMapValue> entry : request.getPlatformMapping().getObjectDumpMap().entrySet()) {
+            String key = entry.getKey();
+            PlatformMappingObjectDumpMapValue value = entry.getValue();
+            Map<String, String> mapValue = new HashMap<>();
+            mapValue.put("propType", value.getPropType());
+            mapValue.put("format", value.getFormat());
+            mapValue.put("delimiter", value.getDelimiter());
+            objectDumpMap.put(key, mapValue);
+        }
+        return objectDumpMap;
+    }
+
     public static Schema getIcebergSchema() {
-        var dumpStructSchema = Types.StructType.of(
-                Types.NestedField.required(7, "type", Types.StringType.get()),
-                Types.NestedField.optional(8, "format", Types.StringType.get()),
-                Types.NestedField.optional(9, "delimiter", Types.StringType.get())
+        var dumpStructSchema = Types.MapType.ofRequired(7, 8,
+                Types.StringType.get(),
+                Types.StringType.get()
         );
         return new Schema(
                 Types.NestedField.required(1, "type", Types.StringType.get()),
@@ -114,12 +131,13 @@ public record UserDefinedPlatformMapping(String typeName,
         result.put("entity_version", entityVersion);
         return result;
     }
+
     /**
      * Helper to convert map data to GenericRecord based on schema
      * Reference: <<a href="https://www.tabular.io/blog/java-api-part-3/">Reference</a>>
      */
     public GenericRecord toGenericRecord() {
-        var genericRecord =  GenericRecord.create(icebergSchema);
+        var genericRecord = GenericRecord.create(icebergSchema);
         return genericRecord.copy(toObjMap());
     }
 
@@ -127,7 +145,7 @@ public record UserDefinedPlatformMapping(String typeName,
         private final String typeName;
         private final String platformName;
         private final String templateSyntax;
-        private final Map<String, PlatformMappingObjectDumpMapValue> objectDumpMap = new HashMap<>();
+        private final Map<String, Map<String, String>> objectDumpMap = new HashMap<>();
         private final int entityVersion;
         private Schema icebergSchema;
 
@@ -138,7 +156,7 @@ public record UserDefinedPlatformMapping(String typeName,
             this.entityVersion = entityVersion;
         }
 
-        public Builder setObjectDumpMap(Map<String, PlatformMappingObjectDumpMapValue> objectDumpMap) {
+        public Builder setObjectDumpMap(Map<String, Map<String, String>> objectDumpMap) {
             this.objectDumpMap.putAll(objectDumpMap);
             return this;
         }

@@ -34,12 +34,14 @@ class UserDefinedPlatformMappingTest {
         var expectedSyntax = "CREATE OR ALTER <type> <signature>\n    RETURNS <return_type>\n    LANGUAGE <language>\n    RUNTIME = <runtime>\n    HANDLER = '<name>'\n    AS $$\n<def>\n$$";
         var expectedTypeName = "function";
         var expectedPlatformName = "snowflake";
-        var expectedObjectDumpMap = Map.of("args", PlatformMappingObjectDumpMapValue.builder().setPropType("map").setFormat("<key> <value>").setDelimiter(",").build(), "packages", PlatformMappingObjectDumpMapValue.builder().setPropType("list").setFormat("<package>").setDelimiter(",").build());
+        var expectedObjectDumpMap = Map.of("args", Map.of("propType", "map", "format", "<key> <value>", "delimiter", ","), "packages", Map.of("propType", "list", "format", "<package>", "delimiter", ","));
+
+        var requestObjectDumpMap = Map.of("args", PlatformMappingObjectDumpMapValue.builder().setPropType("map").setFormat("<key> <value>").setDelimiter(",").build(), "packages", PlatformMappingObjectDumpMapValue.builder().setPropType("list").setFormat("<package>").setDelimiter(",").build());
         PlatformMapping platformMapping = PlatformMapping.builder()
                 .setTypeName(expectedTypeName)
                 .setPlatformName(expectedPlatformName)
                 .setSyntax(expectedSyntax)
-                .setObjectDumpMap(expectedObjectDumpMap).build();
+                .setObjectDumpMap(requestObjectDumpMap).build();
         CreatePlatformMappingRequest request = CreatePlatformMappingRequest
                 .builder()
                 .setPlatformMapping(platformMapping)
@@ -52,9 +54,9 @@ class UserDefinedPlatformMappingTest {
         assert actualMapping.templateSyntax().equals(expectedSyntax);
         assert actualMapping.objectDumpMap().containsKey("args");
         assert actualMapping.objectDumpMap().containsKey("packages");
-        assert actualMapping.objectDumpMap().get("args").getPropType().equals("map");
-        assert actualMapping.objectDumpMap().get("args").getFormat().equals("<key> <value>");
-        assert actualMapping.objectDumpMap().get("args").getDelimiter().equals(",");
+        assert actualMapping.objectDumpMap().get("args").get("propType").equals("map");
+        assert actualMapping.objectDumpMap().get("args").get("format").equals("<key> <value>");
+        assert actualMapping.objectDumpMap().get("args").get("delimiter").equals(",");
     }
 
 
@@ -63,7 +65,7 @@ class UserDefinedPlatformMappingTest {
         var expectedSyntax = "CREATE OR ALTER <type> <signature>\n    RETURNS <return_type>\n    LANGUAGE <language>\n    RUNTIME = <runtime>\n    HANDLER = '<name>'\n    AS $$\n<def>\n$$";
         var expectedTypeName = "function";
         var expectedPlatformName = "snowflake";
-        var expectedObjectDumpMap = Map.of("args", PlatformMappingObjectDumpMapValue.builder().setPropType("map").setFormat("<key> <value>").setDelimiter(",").build(), "packages", PlatformMappingObjectDumpMapValue.builder().setPropType("list").setFormat("<package>").setDelimiter(",").build());
+        var expectedObjectDumpMap = Map.of("args", Map.of("propType", "map", "format", "<key> <value>", "delimiter", ","), "packages", Map.of("propType", "list", "format", "<package>", "delimiter", ","));
         UserDefinedPlatformMapping actualMapping = UserDefinedPlatformMapping.builder(expectedTypeName, expectedPlatformName, expectedSyntax, 1).setObjectDumpMap(expectedObjectDumpMap).build();
 
         var platformMappingAsObjMap = actualMapping.toObjMap();
@@ -81,7 +83,7 @@ class UserDefinedPlatformMappingTest {
         var expectedSyntax = "CREATE OR ALTER <type> <signature>\n    RETURNS <return_type>\n    LANGUAGE <language>\n    RUNTIME = <runtime>\n    HANDLER = '<name>'\n    AS $$\n<def>\n$$";
         var expectedTypeName = "function";
         var expectedPlatformName = "snowflake";
-        var expectedObjectDumpMap = Map.of("args", PlatformMappingObjectDumpMapValue.builder().setPropType("map").setFormat("<key> <value>").setDelimiter(",").build(), "packages", PlatformMappingObjectDumpMapValue.builder().setPropType("list").setFormat("<package>").setDelimiter(",").build());
+        var expectedObjectDumpMap = Map.of("args", Map.of("propType", "map", "format", "<key> <value>", "delimiter", ","), "packages", Map.of("propType", "list", "format", "<package>", "delimiter", ","));
         UserDefinedPlatformMapping actualMapping = UserDefinedPlatformMapping.builder(expectedTypeName, expectedPlatformName, expectedSyntax, 1).setObjectDumpMap(expectedObjectDumpMap).setIcebergSchema(UserDefinedPlatformMapping.getIcebergSchema()).build();
 
         var genericRecord = actualMapping.toGenericRecord();

@@ -30,6 +30,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(PolarisOpenDictService.class);
     private static final Marker OPENDIC_MARKER = MarkerFactory.getMarker("OPENDIC");
     private static final String NAMESPACE = "SYSTEM";
+    private static final String PLATFORM_MAPPINGS_NAMESPACE = "MAPPINGS";
     private final PolarisResolutionManifest resolutionManifest = null;
     private final IBaseRepository icebergRepository;
 
@@ -73,9 +74,9 @@ public class PolarisOpenDictService extends PolarisAdminService {
 
     public String createPlatformMapping(UserDefinedPlatformMapping mappingEntity) throws IOException {
         var schema = mappingEntity.icebergSchema();
-        icebergRepository.createTableIfNotExists(NAMESPACE, "platform_mappings", schema);
-        var genericRecord = icebergRepository.createGenericRecord(schema, mappingEntity.toObjMap());
-        icebergRepository.insertRecord(NAMESPACE, mappingEntity.typeName(), genericRecord);
+        icebergRepository.createTableIfNotExists(NAMESPACE+"."+PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), schema);
+        var genericRecord = mappingEntity.toGenericRecord();
+        icebergRepository.insertRecord(NAMESPACE+"."+PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), genericRecord);
         return genericRecord.toString();
     }
 
