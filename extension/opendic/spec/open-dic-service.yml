@@ -34,7 +34,7 @@ paths:
                 items:
                   $ref: "#/components/schemas/Udo"
         404:
-          description: Udo not found
+          description: No udo's found
     post:
       tags:
         - All Udos
@@ -203,6 +203,58 @@ paths:
           description: Udo or platform mapping not found
         500:
           description: Internal error
+
+  /platforms:
+    get:
+      tags:
+        - Platform Mappings
+      operationId: listPlatforms
+      description: List all platforms with mappings
+      responses:
+        200:
+          description: A list of all registered platforms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformMapping"
+        404:
+          description: No platform mappings found
+
+  /platforms/{platform}:
+    parameters:
+      - name: platform
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags:
+        - Platform Mappings
+      operationId: listMappingsForPlatform
+      description: GET platforms/snowflake
+      responses:
+        200:
+          description: All the mappings registered for the snowflame platform.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformMappings"
+        404:
+          description: Platform mapping not found for object.
+
+    delete:
+      tags:
+        - Platform Mappings
+      operationId: deleteMappingsForPlatform
+      description: DELETE platforms/snowflake
+      responses:
+        200:
+          description: Mappings for platform deleted successfully
+        404:
+          description: Platform not found not found for object.
 
 components:
   schemas:

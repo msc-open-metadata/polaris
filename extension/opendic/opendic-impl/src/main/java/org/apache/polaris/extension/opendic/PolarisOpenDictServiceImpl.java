@@ -16,6 +16,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.extension.opendic.api.PolarisObjectsApiService;
+import org.apache.polaris.extension.opendic.api.PolarisPlatformsApiService;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
@@ -38,7 +39,7 @@ import java.util.Map;
  * Concrete implementation of the Polaris API services
  */
 @RequestScoped
-public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
+public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService, PolarisPlatformsApiService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PolarisOpenDictServiceImpl.class);
     private static final Marker OPENDIC_MARKER = MarkerFactory.getMarker("OPENDIC");
@@ -256,7 +257,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
     }
 
     /**
-     * Get the platform mapping for a specifc object {@code type} and {@code platform}
+     * Get the platform mapping for a specific object {@code type} and {@code platform}
      * Path: {@code GET /api/opendic/v1/objects/{type}/platforms/{platform}}
      *
      * @param type     object type name.
@@ -264,6 +265,20 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService {
      */
     @Override
     public Response getPlatformMappingForUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    public Response listMappingsForPlatform(String platform,RealmContext realmContext,SecurityContext securityContext){
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    public Response listPlatforms(RealmContext realmContext,SecurityContext securityContext) {
+        return Response.status(Response.Status.NOT_IMPLEMENTED).build();
+    }
+
+    public Response deleteMappingsForPlatform(String platform,RealmContext realmContext,SecurityContext securityContext){
         return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
 
