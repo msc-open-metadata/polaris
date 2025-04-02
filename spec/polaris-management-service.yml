@@ -753,41 +753,6 @@ paths:
         404:
           description: "The catalog or the role does not exist"
 
-# Additional endpoints --------------------------------------------------
-  /functions:
-    get:
-      operationId: listFunctions
-      description: List all functions in this polaris service
-      responses:
-        200:
-          description: List of functions in the polaris service
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Functions"
-        403:
-          description: "The caller does not have permission to list function details"
-    post:
-      operationId: createFunction
-      description: Add a new Function
-      requestBody:
-        description: The Function to create
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateFunctionRequest"
-      responses:
-        201:
-          description: "Successful response"
-        403:
-          description: "The caller does not have permission to create a functionp"
-        404:
-          description: "The function does not exist"
-        409:
-          description: "A function with the specified name already exists"
-
-
 components:
   securitySchemes:
     OAuth2:
