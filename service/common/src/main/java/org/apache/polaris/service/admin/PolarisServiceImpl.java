@@ -83,8 +83,7 @@ import org.slf4j.LoggerFactory;
 public class PolarisServiceImpl
     implements PolarisCatalogsApiService,
         PolarisPrincipalsApiService,
-        PolarisPrincipalRolesApiService,
-       PolarisFunctionsApiService {
+        PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
   private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
@@ -687,21 +686,4 @@ public class PolarisServiceImpl
     GrantResources grantResources = new GrantResources(grantList);
     return Response.ok(grantResources).build();
   }
-
-  /** From {@link org.apache.polaris.service.admin.api.PolarisFunctionsApiService} */
-  @Override
-  public Response listFunctions(RealmContext realContext, SecurityContext securityContext) {
-    return Response.status(Response.Status.NOT_IMPLEMENTED).build();
-  }
-
-  /** From {@link org.apache.polaris.service.admin.api.PolarisFunctionsApiService} */
-  @Override
-    public Response createFunction(
-        CreateFunctionRequest request,
-        RealmContext realmContext,
-        SecurityContext securityContext) {
-            LOGGER.info("Creating new function {foo}", request.getFunction());
-            return Response.status(Response.Status.CREATED).build();
-    }
-
 }

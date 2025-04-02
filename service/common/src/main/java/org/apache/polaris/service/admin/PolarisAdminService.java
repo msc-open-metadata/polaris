@@ -170,7 +170,7 @@ public class PolarisAdminService {
         .map(path -> CatalogRoleEntity.of(path.getRawLeafEntity()));
   }
 
-  protected void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
+  private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest =
         entityManager.prepareResolutionManifest(
             callContext, securityContext, null /* referenceCatalogName */);
