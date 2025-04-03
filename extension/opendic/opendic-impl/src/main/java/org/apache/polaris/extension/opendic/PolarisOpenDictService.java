@@ -2,6 +2,7 @@ package org.apache.polaris.extension.opendic;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -28,8 +29,8 @@ public class PolarisOpenDictService extends PolarisAdminService {
     // Initialized in the authorize methods.
     private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(PolarisOpenDictService.class);
     private static final Marker OPENDIC_MARKER = MarkerFactory.getMarker("OPENDIC");
-    private static final String NAMESPACE = "SYSTEM";
-    private static final String PLATFORM_MAPPINGS_NAMESPACE = "MAPPINGS";
+    private static final Namespace NAMESPACE = Namespace.of("SYSTEM");
+    private static final Namespace PLATFORM_MAPPINGS_NAMESPACE = Namespace.of("SYSTEM", "PLATFORM_MAPPINGS");
     private final PolarisResolutionManifest resolutionManifest = null;
     private final IBaseRepository icebergRepository;
 
@@ -74,23 +75,23 @@ public class PolarisOpenDictService extends PolarisAdminService {
 
     public String createPlatformMapping(UserDefinedPlatformMapping mappingEntity) throws IOException {
         var schema = mappingEntity.icebergSchema();
-        icebergRepository.createTableIfNotExists(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), schema);
+        icebergRepository.createTableIfNotExists(PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), schema);
         var genericRecord = mappingEntity.toGenericRecord();
-        icebergRepository.insertRecord(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), genericRecord);
+        icebergRepository.insertRecord(PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), genericRecord);
         return genericRecord.toString();
     }
 
     public boolean deleteMappingsForPlatform(String platformName) {
-        return icebergRepository.dropTable(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, platformName);
+        return icebergRepository.dropTable(PLATFORM_MAPPINGS_NAMESPACE, platformName);
     }
 
     public List<String> listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
-        return icebergRepository.listTables(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE)
+        return icebergRepository.listTables(PLATFORM_MAPPINGS_NAMESPACE)
                 .keySet().stream().toList();
     }
 
     public List<String> listMappingsForPlatform(String platformName) {
-        return icebergRepository.readRecords(NAMESPACE + "." + PLATFORM_MAPPINGS_NAMESPACE, platformName)
+        return icebergRepository.readRecords(PLATFORM_MAPPINGS_NAMESPACE, platformName)
                 .stream()
                 .map(Record::toString)
                 .toList();

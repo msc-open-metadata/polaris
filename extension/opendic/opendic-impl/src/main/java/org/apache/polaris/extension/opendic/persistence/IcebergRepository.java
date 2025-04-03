@@ -79,14 +79,13 @@ public class IcebergRepository implements IBaseRepository {
      * @implNote <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public String createTable(String namespace, String tableName, Schema icebergSchema) throws AlreadyExistsException {
-        Namespace namespaceObj = Namespace.of(namespace);
+    public String createTable(Namespace namespace, String tableName, Schema icebergSchema) throws AlreadyExistsException {
 
-        if (!catalog.namespaceExists(namespaceObj)) {
-            catalog.createNamespace(namespaceObj);
+        if (!catalog.namespaceExists(namespace)) {
+            catalog.createNamespace(namespace);
         }
 
-        TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
+        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         if (catalog.tableExists(identifier)) {
             var table = catalog.loadTable(identifier);
             throw new AlreadyExistsException(
@@ -98,13 +97,11 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public void createTableIfNotExists(String namespace, String tableName, Schema icebergSchema) {
-        Namespace namespaceObj = Namespace.of(namespace);
-
-        if (!catalog.namespaceExists(namespaceObj)) {
-            catalog.createNamespace(namespaceObj);
+    public void createTableIfNotExists(Namespace namespace, String tableName, Schema icebergSchema) {
+        if (!catalog.namespaceExists(namespace)) {
+            catalog.createNamespace(namespace);
         }
-        TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
+        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         if (catalog.tableExists(identifier)) {
             catalog.loadTable(identifier);
         } else {
@@ -117,11 +114,10 @@ public class IcebergRepository implements IBaseRepository {
      * reference: <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public void insertRecords(String namespace, String tableName, List<GenericRecord> records) throws IOException {
+    public void insertRecords(Namespace namespace, String tableName, List<GenericRecord> records) throws IOException {
         LOGGER.info("Inserting records into table: {}.{}", namespace, tableName);
 
-        Namespace namespaceObj = Namespace.of(namespace);
-        TableIdentifier identifier = TableIdentifier.of(namespaceObj, tableName);
+        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
 
         // Create a temporary file for the new data
@@ -149,7 +145,7 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public void insertRecord(String namespace, String tableName, GenericRecord record) throws IOException {
+    public void insertRecord(Namespace namespace, String tableName, GenericRecord record) throws IOException {
         insertRecords(namespace, tableName, List.of(record));
     }
 
@@ -158,8 +154,7 @@ public class IcebergRepository implements IBaseRepository {
      * Show tables in namespace namespaceStr
      */
     @Override
-    public Map<String, String> listTables(String namespaceStr) {
-        Namespace namespace = Namespace.of(namespaceStr);
+    public Map<String, String> listTables(Namespace namespace) {
         return catalog.listTables(namespace)
                 .stream()
                 .map(TableIdentifier::name)
@@ -173,7 +168,7 @@ public class IcebergRepository implements IBaseRepository {
      * Reference: <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public List<Record> readRecords(String namespace, String tableName) {
+    public List<Record> readRecords(Namespace namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
         List<Record> results = new ArrayList<>();
@@ -191,7 +186,7 @@ public class IcebergRepository implements IBaseRepository {
      * Deletes an Iceberg table
      */
     @Override
-    public boolean dropTable(String namespace, String tableName) {
+    public boolean dropTable(Namespace namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         return catalog.dropTable(identifier);
     }
@@ -205,7 +200,7 @@ public class IcebergRepository implements IBaseRepository {
      * @param idValue      The value in id column of the record to delete. Example: "andfunc"
      */
     @Override
-    public void deleteSingleRecord(String namespace, String tableName, String idColumnName, Object idValue) {
+    public void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
 
@@ -216,12 +211,12 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public void alterAddColumn(String namespace, String tableName, String columnName, String columnType) {
+    public void alterAddColumn(Namespace namespace, String tableName, String columnName, String columnType) {
         throw new NotImplementedException();
     }
 
     @Override
-    public Schema readTableSchema(String namespace, String tableName) {
+    public Schema readTableSchema(Namespace namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         return catalog.loadTable(identifier).schema();
     }

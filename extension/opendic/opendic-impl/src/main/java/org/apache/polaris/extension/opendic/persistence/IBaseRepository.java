@@ -21,6 +21,7 @@ package org.apache.polaris.extension.opendic.persistence;
 
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 
@@ -29,42 +30,42 @@ import java.util.List;
 import java.util.Map;
 
 public interface IBaseRepository {
-    String createTable(String namespace, String tableName, Schema icebergSchema);
+    String createTable(Namespace namespace, String tableName, Schema icebergSchema);
 
-    void createTableIfNotExists(String namespace, String tableName, Schema icebergSchema);
+    void createTableIfNotExists(Namespace namespace, String tableName, Schema icebergSchema);
 
     /**
      * Inserts records into an Iceberg table
      */
-    void insertRecords(String namespace, String tableName, List<GenericRecord> records) throws IOException;
+    void insertRecords(Namespace namespace, String tableName, List<GenericRecord> records) throws IOException;
 
 
     /**
      * Inserts a single record into an Iceberg table
      */
-    void insertRecord(String namespace, String tableName, GenericRecord record) throws IOException;
+    void insertRecord(Namespace namespace, String tableName, GenericRecord record) throws IOException;
 
     /**
      * Creates a GenericRecord from a schema and a parsed json object
      */
     GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
-    Map<String, String> listTables(String namespaceStr);
+    Map<String, String> listTables(Namespace namespace);
 
     /**
      * Read records from a table
      */
-    List<Record> readRecords(String namespace, String tableName);
+    List<Record> readRecords(Namespace namespace, String tableName);
 
     /**
      * Deletes an Iceberg {tableName}
      */
-    boolean dropTable(String namespace, String tableName);
+    boolean dropTable(Namespace namespace, String tableName);
 
     /**
      * Get the schema of an table {@code namespace.tableName}
      */
-    Schema readTableSchema(String namespace, String tableName);
+    Schema readTableSchema(Namespace namespace, String tableName);
 
     /**
      * Deletes a single record from an Iceberg table
@@ -73,9 +74,9 @@ public interface IBaseRepository {
      * @param idColumnName The name of the ID column. Example: Name
      * @param idValue      The value in id column of the record to delete. Example: "andfunc"
      */
-    void deleteSingleRecord(String namespace, String tableName, String idColumnName, Object idValue);
+    void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue);
 
-    void alterAddColumn(String namespace, String tableName, String columnName, String columnType);
+    void alterAddColumn(Namespace namespace, String tableName, String columnName, String columnType);
 
     /**
      * Get the catalog instance
