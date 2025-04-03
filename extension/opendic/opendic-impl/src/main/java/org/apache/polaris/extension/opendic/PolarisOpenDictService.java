@@ -51,7 +51,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
     }
 
     public Map<String, String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
-        return icebergRepository.listTables(NAMESPACE);
+        return icebergRepository.listTablesAsStringMap(NAMESPACE);
     }
 
     public String createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
@@ -86,7 +86,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
     }
 
     public List<String> listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
-        return icebergRepository.listTables(PLATFORM_MAPPINGS_NAMESPACE)
+        return icebergRepository.listTablesAsStringMap(PLATFORM_MAPPINGS_NAMESPACE)
                 .keySet().stream().toList();
     }
 

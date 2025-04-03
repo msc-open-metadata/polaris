@@ -123,7 +123,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
         // Add the name of the object
         fieldAssembler
-                .name("name")
+                .name("uname")
                 .type().stringType()
                 .noDefault();
 

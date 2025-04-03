@@ -85,7 +85,7 @@ public record UserDefinedPlatformMapping(String typeName,
                 Types.StringType.get()
         );
         return new Schema(
-                Types.NestedField.required(1, "type", Types.StringType.get()),
+                Types.NestedField.required(1, "uname", Types.StringType.get()),
                 Types.NestedField.required(2, "platform", Types.StringType.get()),
                 Types.NestedField.required(3, "syntax", Types.StringType.get()),
                 Types.NestedField.optional(4, "object_dump_map", Types.MapType.ofOptional(5, 6,
@@ -122,7 +122,7 @@ public record UserDefinedPlatformMapping(String typeName,
 
     public Map<String, Object> toObjMap() {
         Map<String, Object> result = new HashMap<>();
-        result.put("type", typeName);
+        result.put("uname", typeName);
         result.put("platform", platformName);
         result.put("syntax", templateSyntax);
         result.put("object_dump_map", objectDumpMap);

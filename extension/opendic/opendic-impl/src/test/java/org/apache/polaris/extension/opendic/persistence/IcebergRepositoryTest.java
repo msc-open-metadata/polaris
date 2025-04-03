@@ -20,6 +20,7 @@
 package org.apache.polaris.extension.opendic.persistence;
 
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.types.Types;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class IcebergRepositoryTest {
+    private final Namespace TEST_NAMESPACE = Namespace.of("SYSTEM");
 
     @Test
     void testCreateRecord() {
@@ -87,19 +89,17 @@ class IcebergRepositoryTest {
 
         IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
 
-        String namespace = "TEST_SYSTEM";
         String tablename = "andreas_function";
 
-        var columns = icebergRepo.createTable(namespace, tablename, functionSchema);
+        var columns = icebergRepo.createTable(TEST_NAMESPACE, tablename, functionSchema);
         assertNotNull(columns);
     }
 
     @Test
     void testDropTable() {
         IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
-        String namespace = "TEST_SYSTEM";
         String tablename = "andreas_function";
-        var result = icebergRepo.dropTable(namespace, tablename);
+        var result = icebergRepo.dropTable(TEST_NAMESPACE, tablename);
         assertTrue(result);
     }
 
@@ -137,12 +137,12 @@ class IcebergRepositoryTest {
         String namespace = "TEST_SYSTEM";
         String tablename = "andreas_function";
 
-        var columns = icebergRepo.createTable(namespace, tablename, functionSchema);
+        var columns = icebergRepo.createTable(TEST_NAMESPACE, tablename, functionSchema);
         assertNotNull(columns);
 
         // Insert the record into the Iceberg table
         try {
-            icebergRepo.insertRecord(namespace, tablename, record);
+            icebergRepo.insertRecord(TEST_NAMESPACE, tablename, record);
         } catch (IOException e) {
             fail("Failed to insert record: " + e.getMessage());
         }

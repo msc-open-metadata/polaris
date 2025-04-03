@@ -72,8 +72,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService, Pol
         }
         // Create a new admin service with the right context
         PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realmContext);
-        PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext
-        );
+        PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
         IBaseRepository icebergRepository = new IcebergRepository();
         return new PolarisOpenDictService(callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer, icebergRepository
         );

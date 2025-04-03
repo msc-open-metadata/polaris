@@ -20,6 +20,7 @@
 package org.apache.polaris.extension.opendic.persistence;
 
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.data.GenericRecord;
@@ -50,12 +51,16 @@ public interface IBaseRepository {
      */
     GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
-    Map<String, String> listTables(Namespace namespace);
+    Map<String, String> listTablesAsStringMap(Namespace namespace);
+
+    List<Table> listTables(Namespace namespace);
 
     /**
      * Read records from a table
      */
     List<Record> readRecords(Namespace namespace, String tableName);
+
+    List<Record> readRecords(Table table);
 
     /**
      * Deletes an Iceberg {tableName}
