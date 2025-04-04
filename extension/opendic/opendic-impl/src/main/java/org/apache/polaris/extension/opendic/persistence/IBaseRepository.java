@@ -23,6 +23,7 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 
@@ -39,7 +40,6 @@ public interface IBaseRepository {
      * Inserts records into an Iceberg table
      */
     void insertRecords(Namespace namespace, String tableName, List<GenericRecord> records) throws IOException;
-
 
     /**
      * Inserts a single record into an Iceberg table
@@ -59,6 +59,8 @@ public interface IBaseRepository {
      * Read records from a table
      */
     List<Record> readRecords(Namespace namespace, String tableName);
+
+    List<Record> readRecords(TableIdentifier identifier);
 
     List<Record> readRecords(Table table);
 

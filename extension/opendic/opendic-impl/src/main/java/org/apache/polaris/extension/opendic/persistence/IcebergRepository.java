@@ -1,5 +1,6 @@
 package org.apache.polaris.extension.opendic.persistence;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.Catalog;
@@ -28,10 +29,14 @@ import java.util.stream.Collectors;
  * Repository for managing Iceberg tables and data operations using
  * the configured REST catalog from IcebergConfig.
  */
+@ApplicationScoped
 public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
     private static final String DEFAULT_CLIENT_ID_PATH = "engineer_client_id";
     private static final String DEFAULT_CLIENT_SECRET_PATH = "engineer_client_secret";
+
+    // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
+    private static final boolean IN_MEM_CACHE = true;
 
     // Temp non-scalable solution to O(1) duplication checks.
     // UDO/platform -> Set(existing names)
@@ -61,30 +66,31 @@ public class IcebergRepository implements IBaseRepository {
             this.catalog = IcebergConfig.createRESTCatalog(catalogType, clientId, clientSecret);
         }
         LOGGER.info("Catalog {} created", catalogName);
+        if (IN_MEM_CACHE) {
+            Namespace systemNamespace = Namespace.of("SYSTEM");
+            Namespace platformMappingsNamespace = Namespace.of("SYSTEM", "PLATFORM_MAPPINGS");
 
-        Namespace systemNamespace = Namespace.of("SYSTEM");
-        Namespace platformMappingsNamespace = Namespace.of("SYSTEM", "PLATFORM_MAPPINGS");
+            if (!catalog.namespaceExists(systemNamespace)) {
+                catalog.createNamespace(systemNamespace);
+            }
+            if (!catalog.namespaceExists(platformMappingsNamespace)) {
+                catalog.createNamespace(platformMappingsNamespace);
+            }
+            unameCache = loadCache(systemNamespace, platformMappingsNamespace);
+        } else {
+            unameCache = new UnameCacheInMemory(new HashMap<>());
+        }
 
-        if (!catalog.namespaceExists(systemNamespace)) {
-            catalog.createNamespace(systemNamespace);
-        }
-        if (!catalog.namespaceExists(platformMappingsNamespace)) {
-            catalog.createNamespace(platformMappingsNamespace);
-        }
-        unameCache = loadCache();
     }
 
     /**
      * load mapNameSet. Should only be called once on startup. Loads the names of all entities into the mapNameSet for
      * uname uniqueness checking.
      */
-    private IUnameCache loadCache() {
+    private IUnameCache loadCache(Namespace systemNamespace, Namespace platformMappingsNamespace) {
         LOGGER.info("Loading mapNameSet");
 
         var returnCache = new UnameCacheInMemory(new HashMap<>());
-
-        Namespace systemNamespace = Namespace.of("SYSTEM");
-        Namespace platformMappingsNamespace = Namespace.of("SYSTEM", "PLATFORM_MAPPINGS");
 
         if (!catalog.namespaceExists(systemNamespace)) {
             catalog.createNamespace(systemNamespace);
@@ -92,19 +98,19 @@ public class IcebergRepository implements IBaseRepository {
         if (!catalog.namespaceExists(platformMappingsNamespace)) {
             catalog.createNamespace(platformMappingsNamespace);
         }
-        List<Table> udoTables = listTables(systemNamespace);
-        List<Table> platformMappingTables = listTables(platformMappingsNamespace);
-        for (Table table : udoTables) {
-            Set<String> recordNames = readRecords(table).stream().map(record -> record.getField("uname").toString()).collect(Collectors.toSet());
+        List<TableIdentifier> udoTables = catalog.listTables(systemNamespace);
+        List<TableIdentifier> platformMappingTables = catalog.listTables(platformMappingsNamespace);
+        for (TableIdentifier tableId : udoTables) {
+            Set<String> recordNames = readRecords(tableId).stream().map(record -> record.getField("uname").toString()).collect(Collectors.toSet());
             // SYSTEM.<UdoType> -> Set<udoName>
-            returnCache.addTable(table);
-            returnCache.addUnameEntries(table, recordNames);
+            returnCache.addTable(tableId);
+            returnCache.addUnameEntries(tableId, recordNames);
         }
-        for (Table table : platformMappingTables) {
-            Set<String> udoToPlatformSet = readRecords(table).stream().map(record -> record.getField("uname").toString()).collect(Collectors.toSet());
+        for (TableIdentifier tableId : platformMappingTables) {
+            Set<String> udoToPlatformSet = readRecords(tableId).stream().map(record -> record.getField("uname").toString()).collect(Collectors.toSet());
             // PLATFORM_MAPPINGS.<tableName> -> Set<udoType>
-            returnCache.addTable(table);
-            returnCache.addUnameEntries(table, udoToPlatformSet);
+            returnCache.addTable(tableId);
+            returnCache.addUnameEntries(tableId, udoToPlatformSet);
         }
         return returnCache;
     }
@@ -138,12 +144,13 @@ public class IcebergRepository implements IBaseRepository {
             throw new AlreadyExistsException(
                     String.format("Type %s already exists with schema: %s", tableName, SchemaParser.toJson(table.schema())));
         }
-        Table table = catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned());
-
-        // Add the table to the mapNameSet
-        unameCache.addTable(identifier);
-        // Create the table using Iceberg's API
-        return SchemaParser.toJson(table.schema());
+        // Begin transaction.
+        Transaction tnx = catalog.newCreateTableTransaction(identifier, icebergSchema, PartitionSpec.unpartitioned());
+        if (IN_MEM_CACHE) {
+            unameCache.addTable(identifier);
+        }
+        tnx.commitTransaction();
+        return SchemaParser.toJson(tnx.table().schema());
     }
 
     @Override
@@ -151,12 +158,17 @@ public class IcebergRepository implements IBaseRepository {
         if (!catalog.namespaceExists(namespace)) {
             catalog.createNamespace(namespace);
         }
+
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
         if (catalog.tableExists(identifier)) {
             catalog.loadTable(identifier);
         } else {
-            catalog.createTable(identifier, icebergSchema, PartitionSpec.unpartitioned());
-            unameCache.addTable(identifier);
+            Transaction tnx = catalog.newCreateTableTransaction(identifier, icebergSchema, PartitionSpec.unpartitioned());
+            if (IN_MEM_CACHE) {
+                unameCache.addTable(identifier);
+            }
+            tnx.commitTransaction();
         }
     }
 
@@ -171,6 +183,8 @@ public class IcebergRepository implements IBaseRepository {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
 
+        // Begin transaction.
+        Transaction tnx = table.newTransaction();
         // Create a temporary file for the new data
         String filepath = table.location() + "/" + UUID.randomUUID();
         OutputFile file = table.io().newOutputFile(filepath);
@@ -191,10 +205,15 @@ public class IcebergRepository implements IBaseRepository {
         }
 
         DataFile dataFile = dataWriter.toDataFile();
-        table.newAppend().appendFile(dataFile).commit();
+//        table.newAppend().appendFile(dataFile).commit();
 
-        var nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
-        unameCache.addUnameEntries(identifier, nameset);
+        if (IN_MEM_CACHE) {
+            var nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
+            unameCache.addUnameEntries(identifier, nameset);
+        }
+        // End transaction.
+        tnx.newAppend().appendFile(dataFile).commit();
+        tnx.commitTransaction();
 
         LOGGER.debug("Data appended to table: {}", tableName);
     }
@@ -202,7 +221,10 @@ public class IcebergRepository implements IBaseRepository {
     @Override
     public void insertRecord(Namespace namespace, String tableName, GenericRecord record) throws IOException {
         var tableIdentifier = TableIdentifier.of(namespace, tableName);
-        unameCache.checkUnameDoesNotExist(tableIdentifier, record.getField("uname").toString());
+        if (IN_MEM_CACHE) {
+            // Precondition check
+            unameCache.checkUnameDoesNotExist(tableIdentifier, record.getField("uname").toString());
+        }
         insertRecords(namespace, tableName, List.of(record));
     }
 
@@ -239,6 +261,12 @@ public class IcebergRepository implements IBaseRepository {
         return readRecords(table);
     }
 
+    @Override
+    public List<Record> readRecords(TableIdentifier identifier) {
+        Table table = catalog.loadTable(identifier);
+        return readRecords(table);
+    }
+
     /**
      * Read all records from an Iceberg with name={@code tableName} and namespace={@code namespace}
      * Reference: <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
@@ -262,12 +290,11 @@ public class IcebergRepository implements IBaseRepository {
     @Override
     public boolean dropTable(Namespace namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
-        var deleted = catalog.dropTable(identifier);
-        if (deleted) {
+        if (IN_MEM_CACHE) {
             var cacheDeleted = unameCache.deleteUnameTableEntry(identifier);
             assert cacheDeleted;
         }
-        return deleted;
+        return catalog.dropTable(identifier);
     }
 
 
@@ -283,11 +310,16 @@ public class IcebergRepository implements IBaseRepository {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
 
-        Expression deleteExpr = Expressions.equal(idColumnName, idValue);
+        Transaction tnx = table.newTransaction();
 
-        table.newDelete().deleteFromRowFilter(deleteExpr).commit();
-        var deleted = unameCache.deleteUnameEntry(identifier, idValue.toString());
-        assert deleted;
+        Expression deleteExpr = Expressions.equal(idColumnName, idValue);
+        tnx.newDelete().deleteFromRowFilter(deleteExpr).commit();
+
+        if (IN_MEM_CACHE) {
+            var cacheDeleted = unameCache.deleteUnameEntry(identifier, idValue.toString());
+            assert cacheDeleted;
+        }
+        tnx.commitTransaction();
 
         LOGGER.debug("Deleted record with {} = {} from table: {}", idColumnName, idValue, tableName);
     }

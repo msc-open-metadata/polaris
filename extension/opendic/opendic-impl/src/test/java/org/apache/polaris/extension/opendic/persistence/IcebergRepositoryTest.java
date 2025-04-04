@@ -108,7 +108,7 @@ class IcebergRepositoryTest {
         // Allow security manager operations
         Schema functionSchema = new Schema(
                 Types.NestedField.required(1, "id", Types.UUIDType.get()),
-                Types.NestedField.required(2, "name", Types.StringType.get()),
+                Types.NestedField.required(2, "uname", Types.StringType.get()),
                 Types.NestedField.required(3, "def", Types.StringType.get()),
                 Types.NestedField.required(4, "comment", Types.StringType.get()),
                 Types.NestedField.required(5, "language", Types.StringType.get()),
@@ -119,7 +119,7 @@ class IcebergRepositoryTest {
         // Set up test data
         Map<String, Object> data = new HashMap<>();
         data.put("id", 1L);
-        data.put("name", "Foo");
+        data.put("uname", "Foo");
         data.put("def", """
                 def foo():
                     print("Hello World")
@@ -134,11 +134,9 @@ class IcebergRepositoryTest {
         IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
         GenericRecord record = icebergRepo.createGenericRecord(functionSchema, data);
 
-        String namespace = "TEST_SYSTEM";
         String tablename = "andreas_function";
 
-        var columns = icebergRepo.createTable(TEST_NAMESPACE, tablename, functionSchema);
-        assertNotNull(columns);
+        icebergRepo.createTableIfNotExists(TEST_NAMESPACE, tablename, functionSchema);
 
         // Insert the record into the Iceberg table
         try {
