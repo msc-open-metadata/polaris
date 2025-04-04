@@ -69,6 +69,8 @@ public interface IBaseRepository {
      */
     boolean dropTable(Namespace namespace, String tableName);
 
+    void recordWithUnameExistsCheck(TableIdentifier tableIdentifier, String uname, String idColumnName, Object idValue) throws IOException;
+
     /**
      * Get the schema of an table {@code namespace.tableName}
      */
@@ -84,7 +86,6 @@ public interface IBaseRepository {
     void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue);
 
     void alterAddColumn(Namespace namespace, String tableName, String columnName, String columnType);
-
     /**
      * Get the catalog instance
      */

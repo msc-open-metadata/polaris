@@ -10,6 +10,7 @@ import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.IcebergGenerics;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.data.parquet.GenericParquetWriter;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.CloseableIterable;
@@ -17,7 +18,6 @@ import org.apache.iceberg.io.DataWriter;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +36,7 @@ public class IcebergRepository implements IBaseRepository {
     private static final String DEFAULT_CLIENT_SECRET_PATH = "engineer_client_secret";
 
     // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
-    private static final boolean IN_MEM_CACHE = true;
+    private static final boolean IN_MEM_CACHE = false;
 
     // Temp non-scalable solution to O(1) duplication checks.
     // UDO/platform -> Set(existing names)
@@ -141,8 +141,7 @@ public class IcebergRepository implements IBaseRepository {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         if (catalog.tableExists(identifier)) {
             var table = catalog.loadTable(identifier);
-            throw new AlreadyExistsException(
-                    String.format("Type %s already exists with schema: %s", tableName, SchemaParser.toJson(table.schema())));
+            throw new AlreadyExistsException("Type %s already exists with schema: %s", tableName, SchemaParser.toJson(table.schema()));
         }
         // Begin transaction.
         Transaction tnx = catalog.newCreateTableTransaction(identifier, icebergSchema, PartitionSpec.unpartitioned());
@@ -221,10 +220,9 @@ public class IcebergRepository implements IBaseRepository {
     @Override
     public void insertRecord(Namespace namespace, String tableName, GenericRecord record) throws IOException {
         var tableIdentifier = TableIdentifier.of(namespace, tableName);
-        if (IN_MEM_CACHE) {
-            // Precondition check
-            unameCache.checkUnameDoesNotExist(tableIdentifier, record.getField("uname").toString());
-        }
+
+        //Precondition check
+        recordWithUnameExistsCheck(tableIdentifier, record.getField("uname").toString(), "uname", record.getField("uname"));
         insertRecords(namespace, tableName, List.of(record));
     }
 
@@ -327,6 +325,34 @@ public class IcebergRepository implements IBaseRepository {
     @Override
     public void alterAddColumn(Namespace namespace, String tableName, String columnName, String columnType) {
         throw new NotImplementedException();
+    }
+
+
+    /**
+     * Reference: <a href="https://www.tabular.io/blog/java-api-part-2/">https://www.tabular.io/blog/java-api-part-2</a>
+     *
+     * @param tableIdentifier full name of table. Example: {@code "SYSTEM.function" }
+     * @param uname           Example: "foo"
+     * @param idColumnName    Example: uname
+     * @param idValue         Example: "foo"
+     */
+    @Override
+    public void recordWithUnameExistsCheck(TableIdentifier tableIdentifier, String uname, String idColumnName, Object idValue) throws IOException {
+        if (IN_MEM_CACHE) {
+            unameCache.checkUnameDoesNotExist(tableIdentifier, uname);
+        } else {
+            Table table = catalog.loadTable(tableIdentifier);
+            Expression idExpr = Expressions.equal(idColumnName, idValue);
+            try (CloseableIterable<Record> records = IcebergGenerics.read(table).where(idExpr).build()) {
+                // If !empty
+                if (records.iterator().hasNext()) {
+                    throw new AlreadyExistsException("Record with %s == %s already exists in table %s", idColumnName, idValue.toString(), tableIdentifier.toString());
+                }
+            } catch (IOException e) {
+                LOGGER.error("Error checking record existence: {}", e.getMessage());
+                throw new IOException("Error checking record existence", e);
+            }
+        }
     }
 
     @Override
