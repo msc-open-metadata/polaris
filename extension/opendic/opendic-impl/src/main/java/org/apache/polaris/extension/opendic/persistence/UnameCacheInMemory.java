@@ -20,18 +20,26 @@
 package org.apache.polaris.extension.opendic.persistence;
 
 import com.google.common.base.Preconditions;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NotFoundException;
-import org.apache.polaris.core.exceptions.AlreadyExistsException;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+
+/**
+ * Naive in-memory cache for uname duplication checking. Needs atleast 2 improvements for better scaling:
+ * 1. Cache needs to be consistent between Polaris instances. State in icebergRepository does not work. Use something like a redis cache.
+ * 2. Write to iceberg tables and the cache need to be executed as a single atomic transaction.
+ */
 public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) implements IUnameCache {
+
+    public UnameCacheInMemory() {
+        this(new HashMap<>());
+    }
 
     public UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) {
         this.unameCacheMap = unameCacheMap;
@@ -41,9 +49,12 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
     public void addUnameEntry(TableIdentifier tableIdentifier, String uname) {
         String fullTableName = tableIdentifier.toString();
         if (!unameCacheMap.containsKey(fullTableName)) {
-            throw new RuntimeException(String.format("Table %s does not exist in cache", fullTableName));
+            throw new NotFoundException("Table %s does not exist in cache", fullTableName);
         }
         Set<String> unames = unameCacheMap.get(fullTableName);
+        if (unames.contains(uname)) {
+            throw new AlreadyExistsException("Uname %s already exists in %s cache", uname, fullTableName);
+        }
         unames.add(uname);
         unameCacheMap.put(fullTableName, unames);
     }
@@ -53,17 +64,17 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
         addUnameEntries(tableIdentifier.toString(), unames);
     }
 
-    @Override
-    public void addUnameEntries(Table table, Set<String> unames) {
-        addUnameEntries(table.name(), unames);
-    }
-
     private void addUnameEntries(String fullTableName, Set<String> unames) {
         if (!unameCacheMap.containsKey(fullTableName)) {
-            throw new RuntimeException(String.format("Table %s does not exist in cache", fullTableName));
+            throw new NotFoundException("Table %s does not exist in cache", fullTableName);
         }
 
         Set<String> existingUnames = unameCacheMap.get(fullTableName);
+        for (String uname : unames) {
+            if (existingUnames.contains(uname)) {
+                throw new AlreadyExistsException("Uname %s already exists in %s cache", uname, fullTableName);
+            }
+        }
         existingUnames.addAll(unames);
 
         unameCacheMap.put(fullTableName, existingUnames);
@@ -74,14 +85,9 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
         addTable(tableIdentifier.toString());
     }
 
-    @Override
-    public void addTable(Table table) {
-        addTable(table.name());
-    }
-
     private void addTable(String fullTableName) {
         if (unameCacheMap.containsKey(fullTableName)) {
-            throw new RuntimeException(String.format("Table %s already exists in cache", fullTableName));
+            throw new AlreadyExistsException("Table %s already exists in cache", fullTableName);
         }
         unameCacheMap.put(fullTableName, new HashSet<>());
     }
@@ -90,12 +96,12 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
     public boolean deleteUnameEntry(TableIdentifier tableIdentifier, String uname) {
         var fullTableName = tableIdentifier.toString();
         if (!unameCacheMap.containsKey(fullTableName)) {
-            throw new RuntimeException(String.format("Table %s does not exist in cache", fullTableName));
+            throw new NotFoundException("Table %s does not exist in cache", fullTableName);
         }
         Set<String> unames = unameCacheMap.get(fullTableName);
         boolean removed = unames.remove(uname);
         if (!removed) {
-            throw new RuntimeException(String.format("Uname %s does not exist in %s cache", uname, fullTableName));
+            throw new NotFoundException("Uname %s does not exist in %s cache", uname, fullTableName);
         }
         unameCacheMap.put(fullTableName, unames);
         return true;
@@ -105,20 +111,26 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
     public boolean deleteUnameTableEntry(TableIdentifier tableIdentifier) {
         var fullTableName = tableIdentifier.toString();
         if (!unameCacheMap.containsKey(fullTableName)) {
-            throw new NotFoundException("Table does not exist in cache");
+            throw new NotFoundException("Table %s does not exist in cache", fullTableName);
         }
         unameCacheMap.remove(fullTableName);
         return true;
     }
 
+
+    /**
+     * Throws if {@code uname} Exists in {@code tableIdentifier}
+     *
+     * @param tableIdentifier full name of table. Example: {@code "SYSTEM.function" }
+     * @param uname           name of the function. Example: {@code "foo"}
+     */
     @Override
     public void checkUnameDoesNotExist(TableIdentifier tableIdentifier, String uname) {
         var fullTableName = tableIdentifier.toString();
         Preconditions.checkArgument(unameCacheMap.containsKey(fullTableName), "Table %s does not exist in cache", fullTableName);
         Set<String> unames = unameCacheMap.get(fullTableName);
         if (unames.contains(uname)) {
-            throw new AlreadyExistsException(
-                    String.format("Uname %s already exists in %s cache", uname, fullTableName));
+            throw new AlreadyExistsException("Uname %s already exists in %s cache", uname, fullTableName);
         }
     }
 }

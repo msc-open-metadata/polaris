@@ -38,17 +38,12 @@ public interface IUnameCache {
      */
     void addUnameEntries(TableIdentifier tableIdentifier, Set<String> unames);
 
-    void addUnameEntries(Table table, Set<String> unames);
 
     /**
      * @param tableIdentifier full name of table. Example: {@code "SYSTEM.function" }
      */
     void addTable(TableIdentifier tableIdentifier);
 
-    /**
-     * @param table Iceberg table.
-     */
-    void addTable(Table table);
 
     /**
      * @param tableIdentifier full name of table. Example: {@code "SYSTEM.function" }
