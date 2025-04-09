@@ -27,6 +27,7 @@ import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.extension.opendic.persistence.IcebergRepository;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.extension.opendic.model.Udo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -86,7 +87,7 @@ public class PolarisOpenDictServiceImpl implements PolarisObjectsApiService, Pol
     public Response listUdoObjects(String type, RealmContext realmContext, SecurityContext securityContext) {
         PolarisOpenDictService adminService = newAdminService(realmContext, securityContext);
 
-        List<String> udosOfType = adminService.listUdosOfType(type);
+        List<Udo> udosOfType = adminService.listUdosOfType(type);
 
         LOGGER.info(OPENDIC_MARKER, "Listing {}s: {}", type, udosOfType);
         return Response.status(Response.Status.OK)

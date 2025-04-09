@@ -16,6 +16,7 @@ import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.extension.opendic.model.Udo;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -61,12 +62,16 @@ public class PolarisOpenDictService extends PolarisAdminService {
         return genericRecord.toString();
     }
 
-    public List<String> listUdosOfType(String typeName) {
-        return icebergRepository.readRecords(NAMESPACE, typeName)
-                .stream()
-                .map(Record::toString)
+    // Modified to return a list of Udos instead of a list of string - for consistency with openAPI spec components
+    public List<Udo> listUdosOfType(String typeName) {
+        var icebergSchema = icebergRepository.readTableSchema(NAMESPACE, typeName);
+        var records = icebergRepository.readRecords(NAMESPACE, typeName);
+
+        return records.stream()
+                .map(record -> UserDefinedEntity.fromRecord(record, icebergSchema, typeName))
                 .toList();
     }
+
 
     public boolean deleteUdoOfType(String typeName) {
         return icebergRepository.dropTable(NAMESPACE, typeName);

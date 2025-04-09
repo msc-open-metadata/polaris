@@ -21,12 +21,16 @@ package org.apache.polaris.extension.opendic.entity;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.util.Time;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.types.Types;
+import org.apache.polaris.extension.opendic.model.Udo;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.apache.iceberg.data.Record;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public record UserDefinedEntity(String typeName,
                                 String objectName,
@@ -84,4 +88,54 @@ public record UserDefinedEntity(String typeName,
         }
 
     }
+
+    // test to see if some null cases could mess this?
+    // we check typename and object name when we build the UserDefinedObject, but no checks for props, timestamps or version
+    public Udo toUdo() {
+        return Udo.builder(typeName, objectName)
+                .setProps(props != null ? props : new HashMap<>())
+                .setCreateTimestamp(createdTimeStamp)
+                .setLastUpdateTimestamp(lastUpdatedTimeStamp)
+                .setEntityVersion(entityVersion)
+                .build();
+    }
+
+
+    public static Udo fromRecord(Record record, Schema icebergSchema, String typeName) {
+        Preconditions.checkNotNull(record);
+        Preconditions.checkNotNull(icebergSchema);
+        Preconditions.checkNotNull(typeName);
+
+        String name = String.valueOf(record.getField("uname"));
+        Long createdTimestamp = record.getField("createdTimeStamp") != null
+                ? ((Number) record.getField("createdTimeStamp")).longValue()
+                : null;
+        Long lastUpdatedTimestamp = record.getField("lastUpdatedTimeStamp") != null
+                ? ((Number) record.getField("lastUpdatedTimeStamp")).longValue()
+                : null;
+        Integer entityVersion = record.getField("entityVersion") != null
+                ? ((Number) record.getField("entityVersion")).intValue()
+                : null;
+
+        // Dynamically build props from the schema
+        Map<String, Object> props = new HashMap<>();
+        for (Types.NestedField field : icebergSchema.columns()) {
+            String fieldName = field.name();
+            if (!Set.of("uname", "createdTimeStamp", "lastUpdatedTimeStamp", "entityVersion").contains(fieldName)) {
+                Object value = record.getField(fieldName);
+                if (value != null) {
+                    props.put(fieldName, value);
+                }
+            }
+        }
+
+        return Udo.builder(typeName, name)
+                .setProps(props)
+                .setCreateTimestamp(createdTimestamp)
+                .setLastUpdateTimestamp(lastUpdatedTimestamp)
+                .setEntityVersion(entityVersion)
+                .build();
+    }
+
+
 }
