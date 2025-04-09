@@ -94,7 +94,8 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
     private static PropertyType propertyTypeFromString(String typeStr) {
         return switch (typeStr.toLowerCase(Locale.ROOT)) {
             case "string" -> PropertyType.STRING;
-            case "number" -> PropertyType.NUMBER;
+            case "double" -> PropertyType.DOUBLE;
+            case "int" -> PropertyType.INT;
             case "boolean" -> PropertyType.BOOLEAN;
             case "date" -> PropertyType.DATE;
             case "array", "list" -> PropertyType.ARRAY;
@@ -169,7 +170,14 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                         .noDefault();
                 break;
 
-            case NUMBER:
+            case INT:
+                fieldAssembler
+                        .name(fieldName)
+                        .type().unionOf().nullType().and().intType().endUnion()
+                        .noDefault();
+                break;
+
+            case DOUBLE:
                 fieldAssembler
                         .name(fieldName)
                         .type().unionOf().nullType().and().doubleType().endUnion()
@@ -228,7 +236,8 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
      */
     public enum PropertyType {
         STRING,
-        NUMBER,
+        DOUBLE,
+        INT,
         BOOLEAN,
         DATE,
         VARIANT,
