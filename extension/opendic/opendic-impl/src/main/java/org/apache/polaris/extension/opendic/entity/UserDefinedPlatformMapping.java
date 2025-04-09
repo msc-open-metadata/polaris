@@ -148,6 +148,8 @@ public record UserDefinedPlatformMapping(String typeName,
         private final Map<String, Map<String, String>> objectDumpMap = new HashMap<>();
         private final int entityVersion;
         private Schema icebergSchema;
+        private OffsetDateTime createdTimeStamp = OffsetDateTime.now();
+        private OffsetDateTime lastUpdatedTimeStamp = OffsetDateTime.now();
 
         public Builder(String typeName, String platformName, String templateSyntax, int entityVersion) {
             this.typeName = typeName;
@@ -166,11 +168,21 @@ public record UserDefinedPlatformMapping(String typeName,
             return this;
         }
 
+        public Builder setCreateTimestamp(OffsetDateTime createdTimeStamp) {
+            this.createdTimeStamp = createdTimeStamp;
+            return this;
+        }
+
+        public Builder setLastUpdateTimestamp(OffsetDateTime lastUpdatedTimeStamp) {
+            this.lastUpdatedTimeStamp = lastUpdatedTimeStamp;
+            return this;
+        }
+
         public UserDefinedPlatformMapping build() {
             Preconditions.checkNotNull(typeName);
             Preconditions.checkNotNull(platformName);
             Preconditions.checkNotNull(templateSyntax);
-            return new UserDefinedPlatformMapping(typeName, platformName, templateSyntax, objectDumpMap, icebergSchema, OffsetDateTime.now(), OffsetDateTime.now(), entityVersion);
+            return new UserDefinedPlatformMapping(typeName, platformName, templateSyntax, objectDumpMap, icebergSchema, createdTimeStamp, lastUpdatedTimeStamp, entityVersion);
         }
     }
 

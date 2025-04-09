@@ -139,18 +139,13 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
             addField(fieldAssembler, propName, propType);
         }
         // Add default fields
-        fieldAssembler
-                .name("createdTimeStamp")
-                .type().longType()
+        fieldAssembler.name("created_time").type().unionOf().nullType().and()
+                .stringType().endUnion()
                 .noDefault();
-        fieldAssembler
-                .name("lastUpdatedTimeStamp")
-                .type().longType()
+        fieldAssembler.name("last_updated_time").type().unionOf().nullType().and()
+                .stringType().endUnion()
                 .noDefault();
-        fieldAssembler
-                .name("entityVersion")
-                .type().intType()
-                .noDefault();
+        fieldAssembler.name("entity_version").type().unionOf().nullType().and().intType().endUnion().noDefault();
         return fieldAssembler.endRecord();
     }
 

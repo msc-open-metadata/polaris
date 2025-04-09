@@ -68,7 +68,7 @@ public class PolarisOpenDictService extends PolarisAdminService {
         var records = icebergRepository.readRecords(NAMESPACE, typeName);
 
         return records.stream()
-                .map(record -> UserDefinedEntity.fromRecord(record, icebergSchema, typeName))
+                .map(record -> UserDefinedEntity.fromRecord(record, icebergSchema, typeName).toUdo())
                 .toList();
     }
 
