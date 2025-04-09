@@ -49,7 +49,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Udo"
+                  $ref: "#/components/schemas/UdoSchema"
         404:
           description: No udo's found
     post:
@@ -87,7 +87,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Udo"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Udo"
         404:
           description: Udo not found
 
@@ -140,7 +142,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PlatformMappings"
+                  $ref: "#/components/schemas/PlatformMapping"
 
         404:
           description: Udo not found
@@ -215,7 +217,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PullStatements"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Statement"
         404:
           description: Udo or platform mapping not found
         500:
@@ -258,7 +262,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PlatformMappings"
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformMapping"
+
         404:
           description: Platform mapping not found for object.
 
@@ -275,26 +282,6 @@ paths:
 
 components:
   schemas:
-    Udos:
-      type: object
-      description: A list of object definitions
-      properties:
-        objects:
-          type: array
-          items:
-            $ref: "#/components/schemas/Udo"
-      required:
-        - objects
-
-    CreateUdoRequest:
-      type: object
-      description: Request to create a new object of an existing type.
-      properties:
-        udo:
-          $ref: "#/components/schemas/Udo"
-      required:
-        - udo
-
     DefineUdoRequest:
       type: object
       description: Request to define a new object.
@@ -306,20 +293,38 @@ components:
         properties:
           type: object
           description: The properties of the object.
-          example: { language: python, args: dict, ownerId: int }
+          example: { language: string, args: dict, ownerId: int }
           additionalProperties:
             type: string
       required:
         - udoType
 
-    PullUdoRequest:
+    UdoSchema:
       type: object
-      description: Request to pull all UDO objects of an existing type.
+      description: The schema of the object.
       properties:
-        Udos:
-          $ref: "#/components/schemas/Udos"
-        platformMapping:
-          $ref: "#/components/schemas/PlatformMapping"
+        udoType:
+          type: string
+          description: The type of the object.
+          example: Function
+        properties:
+          type: object
+          description: The schema of the object.
+          example: { language: string, args: dict, ownerId: int }
+          additionalProperties:
+            type: string
+          required:
+            - udoType
+
+    CreateUdoRequest:
+      type: object
+      description: Request to create a new object of an existing type.
+      properties:
+        udo:
+          $ref: "#/components/schemas/Udo"
+      required:
+        - udo
+
 
     Udo:
       type: object
@@ -355,15 +360,9 @@ components:
         - name
         - type
 
-    PlatformMappings:
-      type: array
-      items:
-        $ref: "#/components/schemas/PlatformMapping"
-      description: A list of supported platforms.
-
     PlatformMapping:
       type: object
-      description: A supported platform.
+      description: A supported platform mapping.
       properties:
         typeName:
           type: string
@@ -427,17 +426,6 @@ components:
           $ref: "#/components/schemas/PlatformMapping"
       required:
         - platformMapping
-
-    PullStatements:
-      type: object
-      description: A dump of SQL statements that that creates or replaces object in a specific platform.
-      properties:
-        statements:
-          type: array
-          items:
-            $ref: "#/components/schemas/Statement"
-      required:
-        - statements
 
     Statement:
       type: object
