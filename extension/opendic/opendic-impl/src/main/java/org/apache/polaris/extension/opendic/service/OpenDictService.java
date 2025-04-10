@@ -33,6 +33,8 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
+import org.apache.polaris.extension.opendic.model.PlatformMapping;
+import org.apache.polaris.extension.opendic.model.PlatformMappings;
 import org.apache.polaris.extension.opendic.model.Statement;
 import org.apache.polaris.extension.opendic.model.Udo;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
@@ -157,9 +159,26 @@ public class OpenDictService extends PolarisAdminService {
         return icebergRepository.dropTable(PLATFORM_MAPPINGS_NAMESPACE, platformName);
     }
 
-    public List<String> listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
-        return icebergRepository.listTablesAsStringMap(PLATFORM_MAPPINGS_NAMESPACE)
-                .keySet().stream().toList();
+    public List<PlatformMappings> listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
+        var platformTableIds = icebergRepository.listTables(PLATFORM_MAPPINGS_NAMESPACE);
+        List<PlatformMappings> result = new ArrayList<>();
+        try {
+            for (var tableId : platformTableIds) {
+                List<Record> records = icebergRepository.readRecords(tableId);
+                List<PlatformMapping> mappings = records.stream()
+                        .map(UserDefinedPlatformMapping::fromRecord)
+                        .map(UserDefinedPlatformMapping::toPlatformMapping)
+                        .toList();
+                PlatformMappings platformMappings = PlatformMappings.builder()
+                        .setPlatformMappings(mappings)
+                        .setPlatformName(tableId.name())
+                        .build();
+                result.add(platformMappings);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return result;
     }
 
     public List<String> listMappingsForPlatform(String platformName) {

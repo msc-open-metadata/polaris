@@ -265,7 +265,7 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     public Response getPlatformMappingForUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         try {
-            var platformMapping = adminService.getPlatformMapping(type, platform);
+            PlatformMapping platformMapping = adminService.getPlatformMapping(type, platform).toPlatformMapping();
             return Response.status(Response.Status.OK)
                     .entity(platformMapping)
                     .type(MediaType.APPLICATION_JSON)
@@ -343,7 +343,7 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     public Response listPlatforms(RealmContext realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
 
-        List<String> schemaMap = adminService.listPlatforms(realmContext, securityContext);
+        List<PlatformMappings> schemaMap = adminService.listPlatforms(realmContext, securityContext);
 
         LOGGER.info(OPENDIC_MARKER, "Listed Platforms: {}", schemaMap);
         return Response.status(Response.Status.OK)
