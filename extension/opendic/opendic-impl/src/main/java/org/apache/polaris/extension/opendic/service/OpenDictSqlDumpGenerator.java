@@ -19,16 +19,27 @@
 
 package org.apache.polaris.extension.opendic.service;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.model.Statement;
 
 import java.util.List;
 
-public interface IOpenDictDumpGenerator {
+@ApplicationScoped
+public class OpenDictSqlDumpGenerator implements IOpenDictDumpGenerator {
+    @Override
+    public Statement recordDump(Record udoRecord, String syntaxMap, UserDefinedPlatformMapping.AdditionalSyntaxProps additionalSyntaxProps) {
+        return null;
+    }
 
-    public Statement recordDump(Record udoRecord, String syntaxMap, UserDefinedPlatformMapping.AdditionalSyntaxProps additionalSyntaxProps);
-    public Statement recordDump(Record udoRecord, String syntaxMap);
-    public List<Statement> dumpStatements(List<UserDefinedEntity> entities, UserDefinedPlatformMapping userDefinedPlatformMapping);
+    @Override
+    public Statement recordDump(Record udoRecord, String syntaxMap) {
+        return null;
+    }
 
+    @Override
+    public List<Statement> dumpStatements(List<UserDefinedEntity> entities, UserDefinedPlatformMapping userDefinedPlatformMapping) {
+        return List.of();
+    }
 }
