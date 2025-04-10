@@ -117,6 +117,15 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
         return true;
     }
 
+    @Override
+    public boolean tableContainsUname(TableIdentifier tableIdentifier, String uname) {
+        var fullTableName = tableIdentifier.toString();
+        if (!unameCacheMap.containsKey(fullTableName)) {
+            throw new NotFoundException("Table %s does not exist in cache", fullTableName);
+        }
+        Set<String> unames = unameCacheMap.get(fullTableName);
+        return unames.contains(uname);
+    }
 
     /**
      * Throws if {@code uname} Exists in {@code tableIdentifier}

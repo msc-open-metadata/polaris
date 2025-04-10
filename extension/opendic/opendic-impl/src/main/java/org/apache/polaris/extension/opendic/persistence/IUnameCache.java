@@ -56,6 +56,8 @@ public interface IUnameCache {
      */
     boolean deleteUnameTableEntry(TableIdentifier tableIdentifier);
 
+    boolean tableContainsUname(TableIdentifier tableIdentifier, String uname);
+
     /**
      * @param tableIdentifier full name of table. Example: {@code "SYSTEM.function" }
      * @param uname           name of the function. Example: {@code "foo"}
