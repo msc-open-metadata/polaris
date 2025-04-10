@@ -60,10 +60,11 @@ public record UserDefinedEntity(String typeName,
         return new Builder(typeName, objectName, entityVersion);
     }
 
-    public static UserDefinedEntity fromRecord(Record record, Schema icebergSchema, String typeName) {
+    public static UserDefinedEntity fromRecord(Record record, String typeName) {
         Preconditions.checkNotNull(record);
-        Preconditions.checkNotNull(icebergSchema);
         Preconditions.checkNotNull(typeName);
+        Schema icebergSchema = record.struct().asSchema();
+        Preconditions.checkNotNull(icebergSchema);
 
         String name = String.valueOf(record.getField("uname"));
         OffsetDateTime createdTimestamp = OffsetDateTime.parse(record.getField("created_time").toString());
