@@ -239,7 +239,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PlatformMapping"
+                  $ref: "#/components/schemas/PlatformMappings"
         404:
           description: No platform mappings found
 
@@ -313,8 +313,14 @@ components:
           example: { language: string, args: dict, ownerId: int }
           additionalProperties:
             type: string
-          required:
-            - udoType
+        createdTimestamp:
+          type: string
+          description: The creation time represented as unix epoch timestamp in milliseconds
+        lastUpdatedTimestamp:
+          type: string
+          description: The last update time represented as unix epoch timestamp in milliseconds
+      required:
+        - udoType
 
     CreateUdoRequest:
       type: object
@@ -359,6 +365,20 @@ components:
       required:
         - name
         - type
+
+    PlatformMappings:
+      type: object
+      description: ...
+      properties:
+        platformName:
+          type: string
+          description: ...
+          example: snowflake
+        platformMappings:
+          type: array
+          description: all mappings for the platform
+          items:
+            $ref: "#/components/schemas/PlatformMapping"
 
     PlatformMapping:
       type: object
@@ -413,6 +433,15 @@ components:
               - propType
               - format
               - delimiter
+        createdTimestamp:
+          type: string
+          description: The creation time as parseable OffsetDateTime string.
+        lastUpdatedTimestamp:
+          type: string
+          description: The last update time as parseable OffsetDateTime string.
+        version:
+          type: integer
+          description: The version of the mapping.
       required:
         - typeName
         - platformName
