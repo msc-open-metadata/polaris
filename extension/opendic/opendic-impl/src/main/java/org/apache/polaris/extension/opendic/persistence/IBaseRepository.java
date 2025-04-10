@@ -53,23 +53,29 @@ public interface IBaseRepository {
 
     Map<String, String> listTablesAsStringMap(Namespace namespace);
 
-    List<Table> listTables(Namespace namespace);
+    List<TableIdentifier> listTables(Namespace namespace);
 
     /**
      * Read records from a table
      */
-    List<Record> readRecords(Namespace namespace, String tableName);
+    List<Record> readRecords(Namespace namespace, String tableName) throws IOException;
 
-    List<Record> readRecords(TableIdentifier identifier);
+    List<Record> readRecords(TableIdentifier identifier) throws IOException;
 
-    List<Record> readRecords(Table table);
+    List<Record> readRecords(Table table) throws IOException;
+
+    List<Record > readRecordsWithValInCol(Namespace namespace, String tableName, String col, Object val) throws IOException;
+
+    Record readRecordWithId(Namespace namespace, String tableName, String idColumnName, Object idValue) throws IOException;
+    Record readRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException;
+    Record readRecordWithId(Table table, String idColumnName, Object idValue) throws IOException;
+
+
 
     /**
      * Deletes an Iceberg {tableName}
      */
     boolean dropTable(Namespace namespace, String tableName);
-
-    void recordWithUnameExistsCheck(TableIdentifier tableIdentifier, String uname, String idColumnName, Object idValue) throws IOException;
 
     /**
      * Get the schema of an table {@code namespace.tableName}
@@ -86,6 +92,11 @@ public interface IBaseRepository {
     void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue);
 
     void alterAddColumn(Namespace namespace, String tableName, String columnName, String columnType);
+
+    void recordWithUnameExistsCheck(TableIdentifier tableIdentifier, String uname, String idColumnName, Object idValue) throws IOException;
+
+    boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException;
+
     /**
      * Get the catalog instance
      */

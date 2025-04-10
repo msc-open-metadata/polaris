@@ -76,7 +76,11 @@ public class IcebergRepository implements IBaseRepository {
             if (!catalog.namespaceExists(platformMappingsNamespace)) {
                 catalog.createNamespace(platformMappingsNamespace);
             }
-            unameCache = loadCache(systemNamespace, platformMappingsNamespace);
+            try {
+                unameCache = loadCache(systemNamespace, platformMappingsNamespace);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         } else {
             unameCache = new UnameCacheInMemory(new HashMap<>());
         }
@@ -87,7 +91,7 @@ public class IcebergRepository implements IBaseRepository {
      * load mapNameSet. Should only be called once on startup. Loads the names of all entities into the mapNameSet for
      * uname uniqueness checking.
      */
-    private IUnameCache loadCache(Namespace systemNamespace, Namespace platformMappingsNamespace) {
+    private IUnameCache loadCache(Namespace systemNamespace, Namespace platformMappingsNamespace) throws IOException {
         LOGGER.info("Loading mapNameSet");
 
         var returnCache = new UnameCacheInMemory(new HashMap<>());
@@ -226,7 +230,6 @@ public class IcebergRepository implements IBaseRepository {
         insertRecords(namespace, tableName, List.of(record));
     }
 
-
     /**
      * Show tables in namespace namespaceStr
      */
@@ -241,10 +244,9 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public List<Table> listTables(Namespace namespace) {
+    public List<TableIdentifier> listTables(Namespace namespace) {
         return catalog.listTables(namespace)
                 .stream()
-                .map(catalog::loadTable)
                 .toList();
     }
 
@@ -253,14 +255,14 @@ public class IcebergRepository implements IBaseRepository {
      * Reference: <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public List<Record> readRecords(Namespace namespace, String tableName) {
+    public List<Record> readRecords(Namespace namespace, String tableName) throws IOException {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
         return readRecords(table);
     }
 
     @Override
-    public List<Record> readRecords(TableIdentifier identifier) {
+    public List<Record> readRecords(TableIdentifier identifier) throws IOException {
         Table table = catalog.loadTable(identifier);
         return readRecords(table);
     }
@@ -270,13 +272,50 @@ public class IcebergRepository implements IBaseRepository {
      * Reference: <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public List<Record> readRecords(Table table) {
+    public List<Record> readRecords(Table table) throws IOException {
         List<Record> results = new ArrayList<>();
         try (CloseableIterable<Record> records = IcebergGenerics.read(table).build()) {
             records.forEach(results::add);
             return results;
-        } catch (IOException e) {
-            LOGGER.error("Error reading records from table {}: {}", table.name(), e.getMessage());
+        }
+    }
+
+    @Override
+    public List<Record> readRecordsWithValInCol(Namespace namespace, String tableName, String col, Object val) throws IOException {
+        TableIdentifier tableId = TableIdentifier.of(namespace, tableName);
+        Table table = catalog.loadTable(tableId);
+        return readRecordsFiltered(table, Expressions.equal(col, val));
+    }
+
+    /**
+     * Read a single record where {@code idColumName} == the id column of the table with {@code namespace.tableName} and
+     * {@code idValue} == the value of that records idColumn. Example: readRecordWithId("SYSTEM", "function", "uname", "foo")
+     */
+    @Override
+    public Record readRecordWithId(Namespace namespace, String tableName, String idColumnName, Object idValue) throws IOException {
+        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+        Table table = catalog.loadTable(identifier);
+        return readRecordWithId(table, idColumnName, idValue);
+    }
+
+    @Override
+    public Record readRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException {
+        Table table = catalog.loadTable(tableIdentifier);
+        return readRecordWithId(table, idColumnName, idValue);
+    }
+
+    @Override
+    public Record readRecordWithId(Table table, String idColumnName, Object idValue) throws IOException {
+        Expression idExpr = Expressions.equal(idColumnName, idValue);
+        try (CloseableIterable<Record> records = IcebergGenerics.read(table).where(idExpr).build()) {
+            return records.iterator().next();
+        }
+    }
+
+    public List<Record> readRecordsFiltered(Table table, Expression filter) throws IOException {
+        List<Record> results = new ArrayList<>();
+        try (CloseableIterable<Record> records = IcebergGenerics.read(table).where(filter).build()) {
+            records.forEach(results::add);
             return results;
         }
     }
@@ -354,6 +393,20 @@ public class IcebergRepository implements IBaseRepository {
             }
         }
     }
+
+    @Override
+    public boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException {
+        if (IN_MEM_CACHE){
+            return unameCache.tableContainsUname(tableIdentifier, idColumnName);
+        } else {
+            Table table = catalog.loadTable(tableIdentifier);
+            Expression idExpr = Expressions.equal(idColumnName, idValue);
+            try (CloseableIterable<Record> records = IcebergGenerics.read(table).where(idExpr).build()) {
+                return records.iterator().hasNext();
+            }
+        }
+    }
+
 
     @Override
     public Schema readTableSchema(Namespace namespace, String tableName) {

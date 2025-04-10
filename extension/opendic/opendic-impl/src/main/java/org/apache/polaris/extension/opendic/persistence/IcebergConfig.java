@@ -97,6 +97,9 @@ public class IcebergConfig {
     private final String fileIoImpl;
     private final String basePath;
 
+    /**
+     * {@code} RESTCatalogType with default {@code basePath}
+     */
     RESTCatalogType(String catalogName, String fileIoImpl) {
       this.catalogName = catalogName;
       this.fileIoImpl = fileIoImpl;
