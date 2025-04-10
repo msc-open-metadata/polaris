@@ -172,7 +172,9 @@ public record UserDefinedPlatformMapping(String typeName,
         platformMapping.setObjectDumpMap(additionalSyntaxPropsMap.entrySet().stream()
                 .map(entry -> Map.entry(entry.getKey(), entry.getValue().toPlatformMappingObjectDumpMapValue()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-        //TODO: include timestamps and version.
+        platformMapping.setCreatedTimestamp(createdTimeStamp.toString());
+        platformMapping.setLastUpdatedTimestamp(lastUpdatedTimeStamp.toString());
+        platformMapping.setVersion(entityVersion);
         return  platformMapping.build();
     }
 
