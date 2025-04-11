@@ -141,9 +141,7 @@ public class OpenDictService extends PolarisAdminService {
     }
 
     public List<Statement> pullDumpStatements(String typeName, String platformName) throws IOException {
-        List<UserDefinedEntity> entities = icebergRepository.readRecords(NAMESPACE, typeName).stream()
-                .map(record -> UserDefinedEntity.fromRecord(record, typeName))
-                .toList();
+        List<Record> entities = icebergRepository.readRecords(NAMESPACE, typeName);
 
         // example: readRecordWithId(SYSTEM.PLATFORM_MAPPINGS, snowflake, "uname", function)
         UserDefinedPlatformMapping platformMapping = UserDefinedPlatformMapping.fromRecord(

@@ -19,16 +19,27 @@
 
 package org.apache.polaris.extension.opendic.service;
 
-import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.model.Statement;
-
+import org.apache.iceberg.data.Record;
 import java.util.List;
+import java.util.Map;
 
 public interface IOpenDictDumpGenerator {
 
-    public Statement recordDump(Record udoRecord, String syntaxMap, UserDefinedPlatformMapping.AdditionalSyntaxProps additionalSyntaxProps);
-    public Statement recordDump(Record udoRecord, String syntaxMap);
-    public List<Statement> dumpStatements(List<UserDefinedEntity> entities, UserDefinedPlatformMapping userDefinedPlatformMapping);
+    static final String OBJECT_NAME_KEY = "name";
+    static final String OBJECT_TYPE_KEY = "type";
 
+    Statement recordDump(Record udoEntity, String syntaxMap, List<UserDefinedPlatformMapping.SyntaxMapEntry> syntaxReplacementList, Map<String, UserDefinedPlatformMapping.AdditionalSyntaxProps> additionalSyntaxProps);
+
+    Statement recordDump(Record udoEntity, String syntaxMap, List<UserDefinedPlatformMapping.SyntaxMapEntry> syntaxReplacementList);
+
+    /**
+     * Generate a list of program statements for a specific platform using the syntax defined by {@code userDefinedPlatformMapping}
+     *
+     * @param entities                   The UDO entities. Example: [(function, foo), (function, bar), (function, baz)]
+     * @param userDefinedPlatformMapping The platform mapping defining the object type, platform, and template syntax.
+     * @return List of executable statements.
+     */
+    List<Statement> dumpStatements(List<Record> entities, UserDefinedPlatformMapping userDefinedPlatformMapping);
 }

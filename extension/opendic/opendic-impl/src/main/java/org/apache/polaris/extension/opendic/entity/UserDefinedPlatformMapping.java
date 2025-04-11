@@ -10,9 +10,9 @@ import org.apache.polaris.extension.opendic.model.PlatformMapping;
 import org.apache.polaris.extension.opendic.model.PlatformMappingObjectDumpMapValue;
 
 import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -80,12 +80,15 @@ public record UserDefinedPlatformMapping(String typeName,
         OffsetDateTime lastUpdatedTimestamp = OffsetDateTime.parse(String.valueOf(record.getField("last_updated_time")));
         int entityVersion = (int) record.getField("entity_version");
 
-        // Read the additionalSyntax properties from the record
+        // Validate additionalSyntax properties from the record
         Map<String, AdditionalSyntaxProps> additionalSyntaxPropsMap = new HashMap<>();
         Object objectAdditionalSyntaxPropsField = record.getField("object_dump_map");
         Preconditions.checkNotNull(objectAdditionalSyntaxPropsField);
         Preconditions.checkArgument(objectAdditionalSyntaxPropsField instanceof Map<?, ?> additionAlSyntaxPropsMap, "object_dump_map must be a Map");
-        Preconditions.checkArgument(((Map<?, ?>) objectAdditionalSyntaxPropsField).entrySet().stream().allMatch(entry -> entry.getKey() instanceof String && entry.getValue() instanceof Record), "object_dump_map must be a Map<String, Record>");
+        Preconditions.checkArgument(((Map<?, ?>) objectAdditionalSyntaxPropsField).entrySet()
+                .stream()
+                .allMatch(entry -> entry.getKey() instanceof String && entry.getValue() instanceof Record), "object_dump_map must be a Map<String, Record>");
+
         // additionalSyntaxPropsMap is validated. Read the values
         for (Map.Entry<?, ?> entry : ((Map<?, ?>) objectAdditionalSyntaxPropsField).entrySet()) {
             String key = (String) entry.getKey();
@@ -144,7 +147,13 @@ public record UserDefinedPlatformMapping(String typeName,
     }
 
     public static Builder builder(String typeName, String platformName, String templateSyntax, int entityVersion) {
-        return new Builder(typeName, platformName, templateSyntax, entityVersion);
+        return new Builder().setTypeName(typeName)
+                .setPlatformName(platformName)
+                .setTemplateSyntax(templateSyntax)
+                .setEntityVersion(entityVersion);
+    }
+    public static Builder builder() {
+        return new Builder();
     }
 
     /**
@@ -175,24 +184,63 @@ public record UserDefinedPlatformMapping(String typeName,
         platformMapping.setCreatedTimestamp(createdTimeStamp.toString());
         platformMapping.setLastUpdatedTimestamp(lastUpdatedTimeStamp.toString());
         platformMapping.setVersion(entityVersion);
-        return  platformMapping.build();
+        return platformMapping.build();
+    }
+
+    /**
+     * Get a list of subsets of the syntax followed by a replacement value to allow for efficient dump generation and value replacement.
+     */
+    public List<SyntaxMapEntry> getSyntaxMap() {
+        // Use a list because we want to preserve insertion order and allow for duplicates.
+        List<SyntaxMapEntry> syntaxList = new ArrayList<>();
+
+        // Match any word with the pattern: <word>
+        Pattern pattern = Pattern.compile("<([^>]+)>");
+        Matcher matcher = pattern.matcher(templateSyntax);
+
+        int lastMatchIdx = 0;
+        while (matcher.find()) {
+            String placeholder = matcher.group(1); // word
+            String prefix = templateSyntax.substring(lastMatchIdx, matcher.start());
+            syntaxList.add(new SyntaxMapEntry(prefix, placeholder));
+            lastMatchIdx = matcher.end();
+        }
+
+        // Collect suffix
+        String suffix = templateSyntax.substring(lastMatchIdx);
+        syntaxList.add(new SyntaxMapEntry(suffix, ""));
+
+        return syntaxList;
     }
 
     public static final class Builder {
-        private final String typeName;
-        private final String platformName;
-        private final String templateSyntax;
+        private String typeName;
+        private String platformName;
+        private String templateSyntax;
         private final Map<String, AdditionalSyntaxProps> objectDumpMap = new HashMap<>();
-        private final int entityVersion;
+        private int entityVersion;
         private Schema icebergSchema;
         private OffsetDateTime createdTimeStamp = OffsetDateTime.now();
         private OffsetDateTime lastUpdatedTimeStamp = OffsetDateTime.now();
 
-        public Builder(String typeName, String platformName, String templateSyntax, int entityVersion) {
+        public Builder setTypeName(String typeName) {
             this.typeName = typeName;
+            return this;
+        }
+
+        public Builder setPlatformName(String platformName) {
             this.platformName = platformName;
+            return this;
+        }
+
+        public Builder setTemplateSyntax(String templateSyntax) {
             this.templateSyntax = templateSyntax;
+            return this;
+        }
+
+        public Builder setEntityVersion(int entityVersion) {
             this.entityVersion = entityVersion;
+            return this;
         }
 
         public Builder setAdditionalSyntaxPropMap(Map<String, AdditionalSyntaxProps> additionalSyntaxpropMap) {
@@ -284,4 +332,17 @@ public record UserDefinedPlatformMapping(String typeName,
         }
     }
 
+    public record SyntaxMapEntry(String prefix, String placeholder) {
+        public SyntaxMapEntry(String prefix, String placeholder) {
+            Preconditions.checkNotNull(prefix);
+            Preconditions.checkNotNull(placeholder);
+            this.prefix = prefix;
+            this.placeholder = placeholder;
+        }
+
+        @Override
+        public String toString() {
+            return prefix + placeholder;
+        }
+    }
 }

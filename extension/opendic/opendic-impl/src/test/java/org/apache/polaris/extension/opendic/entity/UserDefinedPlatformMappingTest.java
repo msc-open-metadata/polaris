@@ -25,6 +25,7 @@ import org.apache.polaris.extension.opendic.model.PlatformMapping;
 import org.apache.polaris.extension.opendic.model.PlatformMappingObjectDumpMapValue;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 class UserDefinedPlatformMappingTest {
@@ -114,6 +115,25 @@ class UserDefinedPlatformMappingTest {
         assert genericRecord.getField("object_dump_map") instanceof Map;
         assert ((Map<?,?>) genericRecord.getField("object_dump_map")).size() == 2;
         assert ((Map<?,?>) genericRecord.getField("object_dump_map")).get("args") instanceof Record;
+
+    }
+
+    @Test
+    void testGetSyntaxMapping(){
+        String syntax = "CREATE OR ALTER <type> <signature>\n    RETURNS <return_type>\n    LANGUAGE <language>\n    RUNTIME = <runtime>\n    HANDLER = '<name>'\n    AS $$\n<def>\n$$";
+        String typeName = "function";
+        String platformName = "snowflake";
+        UserDefinedPlatformMapping platformMapping= UserDefinedPlatformMapping.builder().setTypeName(typeName)
+                .setPlatformName(platformName)
+                .setTemplateSyntax(syntax)
+                .build();
+
+        List<UserDefinedPlatformMapping.SyntaxMapEntry> syntaxList = platformMapping.getSyntaxMap();
+
+        var first = syntaxList.getFirst();
+        assert first.placeholder().equals("type");
+        assert first.prefix().equals("CREATE OR ALTER ");
+        assert first.toString().equals("CREATE OR ALTER type");
 
     }
 }
