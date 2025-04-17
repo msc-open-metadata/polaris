@@ -244,6 +244,17 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
+    public Set<String> listTableNames(Namespace namespace) {
+        return catalog.listTables(namespace).stream()
+                .map(tableIdentifier -> {
+                    String name = tableIdentifier.name();
+                    int lastDot = name.lastIndexOf('.');
+                    return lastDot >= 0 ? name.substring(lastDot + 1) : name;
+                })
+                .collect(Collectors.toSet());
+    }
+
+    @Override
     public List<TableIdentifier> listTables(Namespace namespace) {
         return catalog.listTables(namespace)
                 .stream()
@@ -396,7 +407,7 @@ public class IcebergRepository implements IBaseRepository {
 
     @Override
     public boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException {
-        if (IN_MEM_CACHE){
+        if (IN_MEM_CACHE) {
             return unameCache.tableContainsUname(tableIdentifier, idColumnName);
         } else {
             Table table = catalog.loadTable(tableIdentifier);

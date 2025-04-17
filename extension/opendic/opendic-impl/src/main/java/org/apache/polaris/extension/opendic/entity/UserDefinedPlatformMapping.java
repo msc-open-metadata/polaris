@@ -188,11 +188,11 @@ public record UserDefinedPlatformMapping(String typeName,
     }
 
     /**
-     * Get a list of subsets of the syntax followed by a replacement value to allow for efficient dump generation and value replacement.
+     * Get a list tuples container a substring of the syntax followed by a replacement value to allow for efficient dump generation and value replacement.
      */
-    public List<SyntaxMapEntry> getSyntaxMap() {
+    public List<SyntaxTuple> getSyntaxTupleList() {
         // Use a list because we want to preserve insertion order and allow for duplicates.
-        List<SyntaxMapEntry> syntaxList = new ArrayList<>();
+        List<SyntaxTuple> syntaxList = new ArrayList<>();
 
         // Match any word with the pattern: <word>
         Pattern pattern = Pattern.compile("<([^>]+)>");
@@ -202,13 +202,13 @@ public record UserDefinedPlatformMapping(String typeName,
         while (matcher.find()) {
             String placeholder = matcher.group(1); // word
             String prefix = templateSyntax.substring(lastMatchIdx, matcher.start());
-            syntaxList.add(new SyntaxMapEntry(prefix, placeholder));
+            syntaxList.add(new SyntaxTuple(prefix, placeholder));
             lastMatchIdx = matcher.end();
         }
 
         // Collect suffix
         String suffix = templateSyntax.substring(lastMatchIdx);
-        syntaxList.add(new SyntaxMapEntry(suffix, ""));
+        syntaxList.add(new SyntaxTuple(suffix, ""));
 
         return syntaxList;
     }
@@ -271,6 +271,11 @@ public record UserDefinedPlatformMapping(String typeName,
         }
     }
 
+    /**
+     * @param propType The type of the complex object. Examples: list, map
+     * @param format How to unfold the complex object. Examples: <key> <value>, <package>
+     * @param delimiter The delimiter used to separate the values in the complex object. Examples: ", ", " "
+     */
     public record AdditionalSyntaxProps(
             String propType,
             String format,
@@ -332,8 +337,16 @@ public record UserDefinedPlatformMapping(String typeName,
         }
     }
 
-    public record SyntaxMapEntry(String prefix, String placeholder) {
-        public SyntaxMapEntry(String prefix, String placeholder) {
+    /**
+     * @param prefix The substring between the previous placeholder and the current placeholder.
+     * @param placeholder The value to be replaced by the object value
+     */
+    public record SyntaxTuple(String prefix, String placeholder) {
+        /**
+         * @param prefix The substring between the previous placeholder and the current placeholder.
+         * @param placeholder The value to be replaced by the object value
+         */
+        public SyntaxTuple(String prefix, String placeholder) {
             Preconditions.checkNotNull(prefix);
             Preconditions.checkNotNull(placeholder);
             this.prefix = prefix;

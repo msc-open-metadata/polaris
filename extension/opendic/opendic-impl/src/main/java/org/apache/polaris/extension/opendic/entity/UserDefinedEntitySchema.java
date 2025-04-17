@@ -122,11 +122,12 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                 .namespace("org.apache.polaris.extension.opendic.entity");
 
         SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
-        // Add the name of the object
+        // Add the name of the object and the object
         fieldAssembler
                 .name("uname")
                 .type().stringType()
                 .noDefault();
+
 
         // Add each property as a field
         for (Map.Entry<String, UserDefinedEntitySchema.PropertyType> entry :
@@ -197,7 +198,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
                 fieldAssembler
                         .name(fieldName)
                         .type().unionOf().nullType().and()
-                        .array().items().unionOf().stringType().and().booleanType().and().longType().and().intType().endUnion()
+                        .array().items().stringType()
                         .endUnion()
                         .noDefault();
                 break;

@@ -128,7 +128,7 @@ class UserDefinedPlatformMappingTest {
                 .setTemplateSyntax(syntax)
                 .build();
 
-        List<UserDefinedPlatformMapping.SyntaxMapEntry> syntaxList = platformMapping.getSyntaxMap();
+        List<UserDefinedPlatformMapping.SyntaxTuple> syntaxList = platformMapping.getSyntaxTupleList();
 
         var first = syntaxList.getFirst();
         assert first.placeholder().equals("type");

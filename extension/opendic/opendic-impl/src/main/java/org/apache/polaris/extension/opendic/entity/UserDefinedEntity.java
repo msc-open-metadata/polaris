@@ -21,6 +21,7 @@ package org.apache.polaris.extension.opendic.entity;
 
 import com.google.common.base.Preconditions;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
@@ -29,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
-import java.time.temporal.TemporalAccessor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -58,6 +58,10 @@ public record UserDefinedEntity(String typeName,
 
     public static Builder builder(String typeName, String objectName, int entityVersion) {
         return new Builder(typeName, objectName, entityVersion);
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static UserDefinedEntity fromRecord(Record record, String typeName) {
@@ -113,9 +117,9 @@ public record UserDefinedEntity(String typeName,
     }
 
     public static class Builder {
-        private final String typeName;
-        private final String objectName;
         private final Map<String, Object> props = new HashMap<>();
+        private String typeName;
+        private String objectName;
         private OffsetDateTime createdTimeStamp = OffsetDateTime.now();
         private OffsetDateTime lastUpdatedTimeStamp = OffsetDateTime.now();
         private int entityVersion;
@@ -124,6 +128,19 @@ public record UserDefinedEntity(String typeName,
             this.typeName = typeName;
             this.objectName = objectName;
             this.entityVersion = entityVersion;
+        }
+
+        public Builder() {
+        }
+
+        public Builder setName(String objectName) {
+            this.objectName = objectName;
+            return this;
+        }
+
+        public Builder setObjectType(String typeName) {
+            this.typeName = typeName;
+            return this;
         }
 
         public Builder setProps(Map<String, Object> props) {
@@ -150,6 +167,8 @@ public record UserDefinedEntity(String typeName,
         public UserDefinedEntity build() {
             Preconditions.checkNotNull(typeName);
             Preconditions.checkNotNull(objectName);
+            Preconditions.checkNotNull(props);
+            Preconditions.checkNotNull(createdTimeStamp);
             return new UserDefinedEntity(typeName, objectName, props, createdTimeStamp, lastUpdatedTimeStamp, entityVersion);
         }
 

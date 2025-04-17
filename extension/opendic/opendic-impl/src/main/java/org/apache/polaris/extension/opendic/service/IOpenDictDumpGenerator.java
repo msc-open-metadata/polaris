@@ -19,20 +19,27 @@
 
 package org.apache.polaris.extension.opendic.service;
 
+import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.model.Statement;
-import org.apache.iceberg.data.Record;
+
 import java.util.List;
 import java.util.Map;
 
 public interface IOpenDictDumpGenerator {
 
-    static final String OBJECT_NAME_KEY = "name";
-    static final String OBJECT_TYPE_KEY = "type";
+    String OBJECT_NAME_KEY = "name";
+    String OBJECT_TYPE_KEY = "type";
 
-    Statement recordDump(Record udoEntity, String syntaxMap, List<UserDefinedPlatformMapping.SyntaxMapEntry> syntaxReplacementList, Map<String, UserDefinedPlatformMapping.AdditionalSyntaxProps> additionalSyntaxProps);
+    /**
+     * @param udoEntity             The record containing the object entity.
+     * @param syntaxMap             The template syntax string from a platform mapping.
+     * @param syntaxReplacementList The syntax replacement datastructure created from the platform mapping efficiently building statements from a entity and
+     * @param additionalSyntaxProps The additional syntax properties for more complex objects like list or map.
+     */
+    Statement entityDump(UserDefinedEntity udoEntity, String syntaxMap, List<UserDefinedPlatformMapping.SyntaxTuple> syntaxReplacementList, Map<String, UserDefinedPlatformMapping.AdditionalSyntaxProps> additionalSyntaxProps);
 
-    Statement recordDump(Record udoEntity, String syntaxMap, List<UserDefinedPlatformMapping.SyntaxMapEntry> syntaxReplacementList);
+    Statement entityDump(UserDefinedEntity udoEntity, String syntaxMap, List<UserDefinedPlatformMapping.SyntaxTuple> syntaxReplacementList);
 
     /**
      * Generate a list of program statements for a specific platform using the syntax defined by {@code userDefinedPlatformMapping}
@@ -41,5 +48,5 @@ public interface IOpenDictDumpGenerator {
      * @param userDefinedPlatformMapping The platform mapping defining the object type, platform, and template syntax.
      * @return List of executable statements.
      */
-    List<Statement> dumpStatements(List<Record> entities, UserDefinedPlatformMapping userDefinedPlatformMapping);
+    List<Statement> dumpStatements(List<UserDefinedEntity> entities, UserDefinedPlatformMapping userDefinedPlatformMapping);
 }

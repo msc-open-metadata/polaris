@@ -30,6 +30,7 @@ import org.apache.iceberg.data.Record;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface IBaseRepository {
     String createTable(Namespace namespace, String tableName, Schema icebergSchema);
@@ -52,6 +53,8 @@ public interface IBaseRepository {
     GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
     Map<String, String> listTablesAsStringMap(Namespace namespace);
+
+    Set<String> listTableNames(Namespace namespace);
 
     List<TableIdentifier> listTables(Namespace namespace);
 

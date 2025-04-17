@@ -19,6 +19,7 @@
 
 package org.apache.polaris.extension.opendic.service;
 
+import com.google.common.base.Preconditions;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
@@ -109,6 +110,7 @@ public class OpenDictService extends PolarisAdminService {
 
     public String createPlatformMapping(UserDefinedPlatformMapping mappingEntity) throws IOException {
         var schema = mappingEntity.icebergSchema();
+        Preconditions.checkArgument(icebergRepository.listTableNames(NAMESPACE).contains(mappingEntity.typeName()), "Type does not exist");
         icebergRepository.createTableIfNotExists(PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), schema);
         var genericRecord = mappingEntity.toGenericRecord();
         icebergRepository.insertRecord(PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), genericRecord);
@@ -140,16 +142,20 @@ public class OpenDictService extends PolarisAdminService {
         }
     }
 
-    public List<Statement> pullDumpStatements(String typeName, String platformName) throws IOException {
-        List<Record> entities = icebergRepository.readRecords(NAMESPACE, typeName);
+    public List<Statement> pullDumpStatements(String typeName, String platformName) {
+        try {
+            List<UserDefinedEntity> entities = icebergRepository.readRecords(NAMESPACE, typeName).stream().map(record -> UserDefinedEntity.fromRecord(record, typeName)).toList();
 
-        // example: readRecordWithId(SYSTEM.PLATFORM_MAPPINGS, snowflake, "uname", function)
-        UserDefinedPlatformMapping platformMapping = UserDefinedPlatformMapping.fromRecord(
-                icebergRepository.readRecordWithId(PLATFORM_MAPPINGS_NAMESPACE,
-                        platformName,
-                        UserDefinedPlatformMapping.ID_COLUMN,
-                        typeName));
-        return openDictDumpGenerator.dumpStatements(entities, platformMapping);
+            // example: readRecordWithId(SYSTEM.PLATFORM_MAPPINGS, snowflake, "uname", function)
+            UserDefinedPlatformMapping platformMapping = UserDefinedPlatformMapping.fromRecord(
+                    icebergRepository.readRecordWithId(PLATFORM_MAPPINGS_NAMESPACE,
+                            platformName,
+                            UserDefinedPlatformMapping.ID_COLUMN,
+                            typeName));
+            return openDictDumpGenerator.dumpStatements(entities, platformMapping);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // Platform API methods --------------------------------------------------------------------------------------------

@@ -288,7 +288,21 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      */
     @Override
     public Response pullUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        LOGGER.info(OPENDIC_MARKER, "Pulling UDO {} for platform {}", type, platform);
+        OpenDictService adminService = newAdminService(realmContext, securityContext);
+        try {
+            List<Statement> statements = adminService.pullDumpStatements(type, platform);
+            return Response.status(Response.Status.OK)
+                    .entity(statements)
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (NotFoundException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to pull UDO {}: {}", type, e.getMessage(), e);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("Platform mapping not found", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
     }
 
     /**
@@ -300,7 +314,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      * @param createPlatformMappingRequest the request to create the platform mapping. Contains template syntax and optional objectDumpMap - Primarily for collections
      */
     @Override
-    public Response createPlatformMappingForUdo(String type, String platform, CreatePlatformMappingRequest createPlatformMappingRequest, RealmContext realmContext, SecurityContext securityContext) {
+    public Response createPlatformMappingForUdo(String type, String platform, CreatePlatformMappingRequest
+            createPlatformMappingRequest, RealmContext realmContext, SecurityContext securityContext) {
         LOGGER.info(OPENDIC_MARKER, "Creating platform mapping {} --> {} : {}", type, platform, createPlatformMappingRequest);
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         Preconditions.checkNotNull(createPlatformMappingRequest.getPlatformMapping());
@@ -321,7 +336,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     }
 
     @Override
-    public Response listMappingsForPlatform(String platform, RealmContext realmContext, SecurityContext securityContext) {
+    public Response listMappingsForPlatform(String platform, RealmContext realmContext, SecurityContext
+            securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         try {
             var schemaMap = adminService.listMappingsForPlatform(platform);
@@ -353,7 +369,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     }
 
     @Override
-    public Response deleteMappingsForPlatform(String platform, RealmContext realmContext, SecurityContext securityContext) {
+    public Response deleteMappingsForPlatform(String platform, RealmContext realmContext, SecurityContext
+            securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         boolean deleted = adminService.deleteMappingsForPlatform(platform);
         if (deleted) {
