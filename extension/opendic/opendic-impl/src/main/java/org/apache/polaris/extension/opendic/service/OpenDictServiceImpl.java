@@ -35,6 +35,8 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.secrets.UserSecretsManager;
+import org.apache.polaris.core.secrets.UserSecretsManagerFactory;
 import org.apache.polaris.extension.opendic.api.PolarisObjectsApiService;
 import org.apache.polaris.extension.opendic.api.PolarisPlatformsApiService;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
@@ -65,16 +67,20 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     private final RealmEntityManagerFactory entityManagerFactory;
     private final PolarisAuthorizer polarisAuthorizer;
     private final MetaStoreManagerFactory metaStoreManagerFactory;
+    private final UserSecretsManagerFactory userSecretsManagerFactory;
     private final CallContext callContext;
 
     @Inject
-    public OpenDictServiceImpl(RealmEntityManagerFactory entityManagerFactory,
-                               MetaStoreManagerFactory metaStoreManagerFactory,
-                               PolarisAuthorizer polarisAuthorizer,
-                               CallContext callContext
+    public OpenDictServiceImpl(
+            RealmEntityManagerFactory entityManagerFactory,
+            MetaStoreManagerFactory metaStoreManagerFactory,
+            UserSecretsManagerFactory userSecretsManagerFactory,
+            PolarisAuthorizer polarisAuthorizer,
+            CallContext callContext
     ) {
         this.entityManagerFactory = entityManagerFactory;
         this.metaStoreManagerFactory = metaStoreManagerFactory;
+        this.userSecretsManagerFactory = userSecretsManagerFactory;
         this.polarisAuthorizer = polarisAuthorizer;
         this.callContext = callContext;
         CallContext.setCurrentContext(callContext);
@@ -83,17 +89,29 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     // Reuse the same helper method from PolarisServiceImpl
     private OpenDictService newAdminService(RealmContext realmContext, SecurityContext securityContext
     ) {
-        AuthenticatedPolarisPrincipal authenticatedPrincipal = (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
+        AuthenticatedPolarisPrincipal authenticatedPrincipal =
+                (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
         if (authenticatedPrincipal == null) {
             throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
         }
         // Create a new admin service with the right context
-        PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realmContext);
-        PolarisMetaStoreManager metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+        PolarisEntityManager entityManager =
+                entityManagerFactory.getOrCreateEntityManager(realmContext);
+        PolarisMetaStoreManager metaStoreManager =
+                metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+        UserSecretsManager userSecretsManager =
+                userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
         IBaseRepository icebergRepository = new IcebergRepository();
         IOpenDictDumpGenerator openDictDumpGenerator = new OpenDictSqlDumpGenerator();
-        return new OpenDictService(callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer,
-                icebergRepository, openDictDumpGenerator);
+        return new OpenDictService(
+                callContext,
+                entityManager,
+                metaStoreManager,
+                userSecretsManager,
+                securityContext,
+                polarisAuthorizer,
+                icebergRepository,
+                openDictDumpGenerator);
     }
 
     /**

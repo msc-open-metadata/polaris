@@ -31,6 +31,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
@@ -64,12 +65,14 @@ public class OpenDictService extends PolarisAdminService {
             @NotNull CallContext callContext,
             @NotNull PolarisEntityManager entityManager,
             @NotNull PolarisMetaStoreManager metaStoreManager,
+            @NotNull UserSecretsManager userSecretsManager,
             @NotNull SecurityContext securityContext,
             @NotNull PolarisAuthorizer authorizer,
+
             @NotNull IBaseRepository icebergRepository,
             @NotNull IOpenDictDumpGenerator openDictDumpGenerator
     ) {
-        super(callContext, entityManager, metaStoreManager, securityContext, authorizer);
+        super(callContext, entityManager, metaStoreManager, userSecretsManager, securityContext, authorizer);
         this.icebergRepository = icebergRepository;
         this.openDictDumpGenerator = openDictDumpGenerator;
     }

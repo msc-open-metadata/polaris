@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 class UserDefinedPlatformMappingTest {
 
     @Test
@@ -70,14 +72,14 @@ class UserDefinedPlatformMappingTest {
         UserDefinedPlatformMapping actualMapping =
                 UserDefinedPlatformMapping.fromRequest(expectedTypeName, expectedPlatformName, request);
 
-        assert actualMapping.typeName().equals(expectedTypeName);
-        assert actualMapping.platformName().equals(expectedPlatformName);
-        assert actualMapping.templateSyntax().equals(expectedSyntax);
-        assert actualMapping.additionalSyntaxPropsMap().containsKey("args");
-        assert actualMapping.additionalSyntaxPropsMap().get("args").propType().equals("map");
-        assert actualMapping.additionalSyntaxPropsMap().get("args").format().equals("<key> <value>");
-        assert actualMapping.additionalSyntaxPropsMap().get("args").delimiter().equals(",");
-        assert actualMapping.additionalSyntaxPropsMap().size() == 2;
+        assertThat(actualMapping.typeName()).isEqualTo(expectedTypeName);
+        assertThat(actualMapping.platformName()).isEqualTo(expectedPlatformName);
+        assertThat(actualMapping.templateSyntax()).isEqualTo(expectedSyntax);
+        assertThat(actualMapping.additionalSyntaxPropsMap()).containsKey("args");
+        assertThat(actualMapping.additionalSyntaxPropsMap().get("args").propType()).isEqualTo("map");
+        assertThat(actualMapping.additionalSyntaxPropsMap().get("args").format()).isEqualTo("<key> <value>");
+        assertThat(actualMapping.additionalSyntaxPropsMap().get("args").delimiter()).isEqualTo(",");
+        assertThat(actualMapping.additionalSyntaxPropsMap()).hasSize(2);
     }
 
     @Test
@@ -109,21 +111,20 @@ class UserDefinedPlatformMappingTest {
 
         GenericRecord genericRecord = actualMapping.toGenericRecord();
 
-        assert genericRecord.getField("uname").equals(expectedTypeName);
-        assert genericRecord.getField("platform").equals(expectedPlatformName);
-        assert genericRecord.getField("syntax").equals(expectedSyntax);
-        assert genericRecord.getField("object_dump_map") instanceof Map;
-        assert ((Map<?,?>) genericRecord.getField("object_dump_map")).size() == 2;
-        assert ((Map<?,?>) genericRecord.getField("object_dump_map")).get("args") instanceof Record;
-
+        assertThat(genericRecord.getField("uname")).isEqualTo(expectedTypeName);
+        assertThat(genericRecord.getField("platform")).isEqualTo(expectedPlatformName);
+        assertThat(genericRecord.getField("syntax")).isEqualTo(expectedSyntax);
+        assertThat(genericRecord.getField("object_dump_map")).isInstanceOf(Map.class);
+        assertThat((Map<?, ?>) genericRecord.getField("object_dump_map")).hasSize(2);
+        assertThat(((Map<?, ?>) genericRecord.getField("object_dump_map")).get("args")).isInstanceOf(Record.class);
     }
 
     @Test
-    void testGetSyntaxMapping(){
+    void testGetSyntaxTupleList() {
         String syntax = "CREATE OR ALTER <type> <signature>\n    RETURNS <return_type>\n    LANGUAGE <language>\n    RUNTIME = <runtime>\n    HANDLER = '<name>'\n    AS $$\n<def>\n$$";
         String typeName = "function";
         String platformName = "snowflake";
-        UserDefinedPlatformMapping platformMapping= UserDefinedPlatformMapping.builder().setTypeName(typeName)
+        UserDefinedPlatformMapping platformMapping = UserDefinedPlatformMapping.builder().setTypeName(typeName)
                 .setPlatformName(platformName)
                 .setTemplateSyntax(syntax)
                 .build();
@@ -131,9 +132,8 @@ class UserDefinedPlatformMappingTest {
         List<UserDefinedPlatformMapping.SyntaxTuple> syntaxList = platformMapping.getSyntaxTupleList();
 
         var first = syntaxList.getFirst();
-        assert first.placeholder().equals("type");
-        assert first.prefix().equals("CREATE OR ALTER ");
-        assert first.toString().equals("CREATE OR ALTER type");
-
+        assertThat(first.placeholder()).isEqualTo("type");
+        assertThat(first.prefix()).isEqualTo("CREATE OR ALTER ");
+        assertThat(first.toString()).isEqualTo("CREATE OR ALTER type");
     }
 }

@@ -195,8 +195,9 @@ public record UserDefinedPlatformMapping(String typeName,
         List<SyntaxTuple> syntaxList = new ArrayList<>();
 
         // Match any word with the pattern: <word>
-        Pattern pattern = Pattern.compile("<([^>]+)>");
-        Matcher matcher = pattern.matcher(templateSyntax);
+        final String PLACEHOLDER_REGEX = "<([^>]+)>";
+        final Pattern PLACEHOLDER_PATTERN = Pattern.compile(PLACEHOLDER_REGEX);
+        Matcher matcher = PLACEHOLDER_PATTERN.matcher(templateSyntax);
 
         int lastMatchIdx = 0;
         while (matcher.find()) {
