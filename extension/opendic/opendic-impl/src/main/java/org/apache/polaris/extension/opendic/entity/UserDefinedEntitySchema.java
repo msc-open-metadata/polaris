@@ -25,9 +25,13 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.polaris.extension.opendic.model.DefineUdoRequest;
+import org.apache.polaris.extension.opendic.model.UdoSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -38,7 +42,10 @@ import java.util.Map;
  * A type in this case is defined by a name, e.g. Function and a prop map, e.g. a list of property definitions that are
  * that this type expects. For now, this entity can be considered a userdefined table schema
  */
-public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType> propertyDefinitions) {
+public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType> propertyDefinitions,
+                                      OffsetDateTime createdTimeStamp,
+                                      OffsetDateTime lastUpdatedTimeStamp,
+                                      int entityVersion) {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserDefinedEntitySchema.class);
 
     /**
@@ -56,7 +63,8 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         Preconditions.checkArgument(!request.getProperties().isEmpty(), "Must define atleast 1 property");
         Preconditions.checkNotNull(request.getProperties());
         Preconditions.checkArgument(!request.getUdoType().isEmpty());
-        return new UserDefinedEntitySchema.Builder(request.getUdoType())
+        return new UserDefinedEntitySchema.Builder()
+                .setTypeName(request.getUdoType())
                 .setProperties(propsFromMap(request.getProperties()))
                 .build();
     }
@@ -91,6 +99,47 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         return result;
     }
 
+    public static UserDefinedEntitySchema fromTableSchema(org.apache.iceberg.Schema icebergSchema, String typeName,
+                                                          long createdTimeStamp,
+                                                          long lastUpdatedTimeStamp,
+                                                          int entityVersion) {
+        return UserDefinedEntitySchema.fromTableSchema(
+                AvroSchemaUtil.convert(icebergSchema, typeName),
+                createdTimeStamp,
+                lastUpdatedTimeStamp,
+                entityVersion);
+    }
+
+    public static UserDefinedEntitySchema fromTableSchema(Schema schema, long createdMillis, long lastUpdatedMillis, int entityVersion) {
+        Preconditions.checkNotNull(schema);
+
+        Map<String, PropertyType> props = new HashMap<>();
+        for (Schema.Field field : schema.getFields()) {
+            String fieldName = field.name();
+            Schema fieldSchema = field.schema();
+            PropertyType propType = propertyTypeFromString(fieldSchema.getType().getName());
+            props.put(fieldName, propType);
+        }
+        return UserDefinedEntitySchema.builder()
+                .setTypeName(schema.getName())
+                .setProperties(props)
+                .setCreateTimestamp(fromEpochMillis(createdMillis))
+                .setLastUpdateTimestamp(fromEpochMillis(lastUpdatedMillis))
+                .setEntityVersion(entityVersion)
+                .build();
+    }
+
+    /**
+     * Converts milliseconds since Unix epoch to OffsetDateTime
+     *
+     * @param epochMillis milliseconds since January 1, 1970, 00:00:00 GMT
+     * @return OffsetDateTime representing the time at the system default offset
+     */
+    public static OffsetDateTime fromEpochMillis(long epochMillis) {
+        Instant instant = Instant.ofEpochMilli(epochMillis);
+        return OffsetDateTime.ofInstant(instant, ZoneId.systemDefault());
+    }
+
     private static PropertyType propertyTypeFromString(String typeStr) {
         return switch (typeStr.toLowerCase(Locale.ROOT)) {
             case "string" -> PropertyType.STRING;
@@ -107,18 +156,13 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
     /**
      * Generate an Avro schema from a UserDefinedEntityType
      *
-     * @param entityTypeSchema The user-defined entity type
      * @return An Avro Schema representing the entity type
-     * TODO: Replace completely with getIcebergSchema
      */
-    public static Schema getAvroSchema(UserDefinedEntitySchema entityTypeSchema) {
-        if (entityTypeSchema == null) {
-            throw new IllegalArgumentException("Entity type cannot be null");
-        }
-        LOGGER.debug("Getting Avro Schema for {}", entityTypeSchema.typeName);
+    public Schema getAvroSchema() {
+        LOGGER.debug("Getting Avro Schema for {}", typeName);
 
         SchemaBuilder.RecordBuilder<Schema> recordBuilder = SchemaBuilder
-                .record(entityTypeSchema.typeName())
+                .record(typeName)
                 .namespace("org.apache.polaris.extension.opendic.entity");
 
         SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
@@ -131,7 +175,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
 
         // Add each property as a field
         for (Map.Entry<String, UserDefinedEntitySchema.PropertyType> entry :
-                entityTypeSchema.propertyDefinitions().entrySet()) {
+                propertyDefinitions.entrySet()) {
 
             String propName = entry.getKey();
             UserDefinedEntitySchema.PropertyType propType = entry.getValue();
@@ -221,9 +265,29 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         }
     }
 
-    public static org.apache.iceberg.Schema getIcebergSchema(UserDefinedEntitySchema entityTypeSchema) {
-        var avroSchema = getAvroSchema(entityTypeSchema);
+    public org.apache.iceberg.Schema getIcebergSchema() {
+        var avroSchema = getAvroSchema();
         return AvroSchemaUtil.toIceberg(avroSchema);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public UdoSchema toUdoSchema() {
+        Map<String, String> props = new HashMap<>();
+        for (Map.Entry<String, PropertyType> entry : propertyDefinitions.entrySet()) {
+            String propName = entry.getKey();
+            PropertyType propType = entry.getValue();
+            props.put(propName, propType.name());
+        }
+        return UdoSchema.builder()
+                .setUdoType(typeName)
+                .setProperties(props)
+                .setCreatedTimestamp(createdTimeStamp.toString())
+                .setLastUpdatedTimestamp(lastUpdatedTimeStamp.toString())
+//                .setVersion(entityVersion) //TODO uncomment
+                .build();
     }
 
     /**
@@ -241,15 +305,18 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
     }
 
     /**
-     * Builder for creating UserDefinedEntityType instances.
+     * Builder for creating UserDefinedEntitySchema instances.
      */
     public static class Builder {
         private final Map<String, PropertyType> props = new HashMap<>();
-        private final String typeName;
-        //TODO required property?
+        private String typeName;
+        private OffsetDateTime createdTimeStamp = OffsetDateTime.now();
+        private OffsetDateTime lastUpdatedTimeStamp = OffsetDateTime.now();
+        private int entityVersion;
 
-        public Builder(String typeName) {
+        public Builder setTypeName(String typeName) {
             this.typeName = typeName;
+            return this;
         }
 
         public Builder addProperty(String name, PropertyType type) {
@@ -262,11 +329,27 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
             return this;
         }
 
+        public Builder setCreateTimestamp(OffsetDateTime createdTimeStamp) {
+            this.createdTimeStamp = createdTimeStamp;
+            return this;
+        }
+
+        public Builder setLastUpdateTimestamp(OffsetDateTime lastUpdatedTimeStamp) {
+            this.lastUpdatedTimeStamp = lastUpdatedTimeStamp;
+            return this;
+        }
+
+        public Builder setEntityVersion(int entityVersion) {
+            this.entityVersion = entityVersion;
+            return this;
+        }
+
+
         public UserDefinedEntitySchema build() {
-            if (typeName == null || typeName.isEmpty()) {
-                throw new IllegalStateException("Entity type typeName is required");
-            }
-            return new UserDefinedEntitySchema(typeName, props);
+            Preconditions.checkNotNull(typeName);
+            Preconditions.checkNotNull(props);
+            Preconditions.checkArgument(!props.isEmpty(), "Must define at least 1 property");
+            return new UserDefinedEntitySchema(typeName, props, createdTimeStamp, lastUpdatedTimeStamp, entityVersion);
         }
     }
 }

@@ -136,7 +136,7 @@ public class IcebergRepository implements IBaseRepository {
      * @implNote <a href="https://www.tabular.io/blog/java-api-part-3/">ref</a>
      */
     @Override
-    public String createTable(Namespace namespace, String tableName, Schema icebergSchema) throws AlreadyExistsException {
+    public TableIdentifier createTable(Namespace namespace, String tableName, Schema icebergSchema) throws AlreadyExistsException {
 
         if (!catalog.namespaceExists(namespace)) {
             catalog.createNamespace(namespace);
@@ -153,7 +153,7 @@ public class IcebergRepository implements IBaseRepository {
             unameCache.addTable(identifier);
         }
         tnx.commitTransaction();
-        return SchemaParser.toJson(tnx.table().schema());
+        return identifier;
     }
 
     @Override
@@ -231,16 +231,43 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     /**
+     * Gets the creation timestamp of a table
+     *
+     * @param tableIdentifier The table identifier
+     * @return The creation timestamp in milliseconds since epoch
+     */
+    @Override
+    public long getTableCreationTime(TableIdentifier tableIdentifier) {
+        Table table = catalog.loadTable(tableIdentifier);
+        if (table.history().isEmpty()) {
+            return 0L;
+        }
+        HistoryEntry firstSnapshot = table.history().getFirst();
+        return firstSnapshot.timestampMillis();
+    }
+
+    /**
+     * Gets the last update timestamp of a table
+     *
+     * @param tableIdentifier The table identifier
+     * @return The last update timestamp in milliseconds since epoch
+     */
+    @Override
+    public long getTableLastUpdateTime(TableIdentifier tableIdentifier) {
+        Table table = catalog.loadTable(tableIdentifier);
+        if (table.history().isEmpty()) {
+            return 0L;
+        }
+        HistoryEntry currentSnapshot = table.history().getLast();
+        return currentSnapshot.timestampMillis();
+    }
+
+    /**
      * Show tables in namespace namespaceStr
      */
     @Override
-    public Map<String, String> listTablesAsStringMap(Namespace namespace) {
-        return catalog.listTables(namespace)
-                .stream()
-                .map(TableIdentifier::name)
-                .collect(Collectors.toMap(
-                        tableName -> tableName,
-                        tableName -> SchemaParser.toJson(catalog.loadTable(TableIdentifier.of(namespace, tableName)).schema())));
+    public List<TableIdentifier> listTableIds(Namespace namespace) {
+        return catalog.listTables(namespace);
     }
 
     @Override
@@ -422,7 +449,12 @@ public class IcebergRepository implements IBaseRepository {
     @Override
     public Schema readTableSchema(Namespace namespace, String tableName) {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
-        return catalog.loadTable(identifier).schema();
+        return readTableSchema(identifier);
+    }
+
+    @Override
+    public Schema readTableSchema(TableIdentifier tableIdentifier) {
+        return catalog.loadTable(tableIdentifier).schema();
     }
 
 

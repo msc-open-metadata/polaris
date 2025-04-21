@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.Set;
 
 public interface IBaseRepository {
-    String createTable(Namespace namespace, String tableName, Schema icebergSchema);
+    TableIdentifier createTable(Namespace namespace, String tableName, Schema icebergSchema);
 
     void createTableIfNotExists(Namespace namespace, String tableName, Schema icebergSchema);
 
@@ -52,7 +52,7 @@ public interface IBaseRepository {
      */
     GenericRecord createGenericRecord(Schema schema, Map<String, Object> data);
 
-    Map<String, String> listTablesAsStringMap(Namespace namespace);
+    List<TableIdentifier> listTableIds(Namespace namespace);
 
     Set<String> listTableNames(Namespace namespace);
 
@@ -86,6 +86,10 @@ public interface IBaseRepository {
     Schema readTableSchema(Namespace namespace, String tableName);
 
     /**
+     * Get the schema of an table {@code tableIdentifier}
+     */
+    Schema readTableSchema(TableIdentifier tableIdentifier);
+    /**
      * Deletes a single record from an Iceberg table
      *
      * @param tableName    The name of the table to delete from. Example: "function"
@@ -100,6 +104,8 @@ public interface IBaseRepository {
 
     boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException;
 
+    long getTableCreationTime(TableIdentifier tableIdentifier);
+    long getTableLastUpdateTime(TableIdentifier tableIdentifier);
     /**
      * Get the catalog instance
      */

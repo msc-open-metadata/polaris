@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.avro.Schema;
+import org.apache.polaris.extension.opendic.model.UdoSchema;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -76,11 +78,12 @@ class UserDefinedEntitySchemaTest {
   void test_002_generateSchema(String typeName, Map<String, String> props) {
 
     UserDefinedEntitySchema entityType =
-        new UserDefinedEntitySchema.Builder(typeName)
+        new UserDefinedEntitySchema.Builder()
+            .setTypeName(typeName)
             .setProperties(UserDefinedEntitySchema.propsFromMap(props))
             .build();
 
-    Schema schema = UserDefinedEntitySchema.getAvroSchema(entityType);
+    Schema schema = entityType.getAvroSchema();
 
     assertNotNull(schema, "Schema should not be null");
     assertEquals(Schema.Type.RECORD, schema.getType(), "Schema type should be RECORD");
@@ -92,5 +95,30 @@ class UserDefinedEntitySchemaTest {
             .takeWhile(typeString -> props.containsKey(typeString))
             .toList();
     assertEquals(fieldStream.size(), props.size());
+  }
+
+  @ParameterizedTest
+  @MethodSource("schemaPropertyTypeProvider")
+  void test_003_fromTableSchema() {
+    String typeName = "Function";
+    Map<String, String> props = Map.of("def", "variant", "language", "string");
+
+    UserDefinedEntitySchema entityType =
+        new UserDefinedEntitySchema.Builder()
+            .setTypeName(typeName)
+            .setProperties(UserDefinedEntitySchema.propsFromMap(props))
+            .build();
+
+    org.apache.iceberg.Schema schema = entityType.getIcebergSchema();
+    long createdTime = System.currentTimeMillis();
+    long lastUpdatedTime = System.currentTimeMillis();
+    int entityVersion = 1;
+
+    var createdSchema = UserDefinedEntitySchema.fromTableSchema(schema, typeName, createdTime, lastUpdatedTime, entityVersion);
+    var createdDTO = createdSchema.toUdoSchema();
+
+    assertNotNull(createdDTO.getCreatedTimestamp());
+    assertNotNull(createdDTO.getLastUpdatedTimestamp());
+    assertEquals(typeName, createdDTO.getUdoType());
   }
 }

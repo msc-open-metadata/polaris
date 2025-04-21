@@ -21,7 +21,6 @@ package org.apache.polaris.extension.opendic.entity;
 
 import com.google.common.base.Preconditions;
 import org.apache.iceberg.Schema;
-import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.extension.opendic.model.CreateUdoRequest;
@@ -105,13 +104,12 @@ public record UserDefinedEntity(String typeName,
         return map;
     }
 
-    // test to see if some null cases could mess this?
     // we check typename and object name when we build the UserDefinedObject, but no checks for props, timestamps or version
     public Udo toUdo() {
         return Udo.builder(typeName, objectName)
                 .setProps(props != null ? props : new HashMap<>())
-                .setCreateTimestamp(createdTimeStamp.toEpochSecond())
-                .setLastUpdateTimestamp(lastUpdatedTimeStamp.toEpochSecond())
+                .setCreatedTimestamp(createdTimeStamp.toString())
+                .setLastUpdatedTimestamp(lastUpdatedTimeStamp.toString())
                 .setEntityVersion(entityVersion)
                 .build();
     }

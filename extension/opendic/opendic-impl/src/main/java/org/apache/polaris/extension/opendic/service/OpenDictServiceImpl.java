@@ -122,7 +122,7 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     public Response listUdoObjects(String type, RealmContext realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
 
-        List<Udo> udosOfType = adminService.listUdosOfType(type);
+        List<Udo> udosOfType = adminService.listUdosOfType(type).stream().map(UserDefinedEntity::toUdo).toList();
 
         LOGGER.info(OPENDIC_MARKER, "Listing {}s: {}", type, udosOfType);
         return Response.status(Response.Status.OK)
@@ -139,7 +139,9 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     public Response listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
 
-        Map<String, String> schemaMap = adminService.listUdoTypes(realmContext, securityContext);
+        List<UdoSchema> schemaMap = adminService.listUdoTypes(realmContext, securityContext).stream()
+                .map(UserDefinedEntitySchema::toUdoSchema)
+                .toList();
 
         LOGGER.info(OPENDIC_MARKER, "Listed Types: {}", schemaMap);
         return Response.status(Response.Status.OK)
@@ -189,9 +191,9 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
         LOGGER.info(OPENDIC_MARKER, "Creating open {} {} props: {}", type, request.getUdo().getName(), request.getUdo().getProps());
         try {
             UserDefinedEntity entity = UserDefinedEntity.fromRequest(type, request);
-            var createdRecordString = adminService.createUdo(entity);
+            UserDefinedEntity createdEntity = adminService.createUdo(entity);
             return Response.status(Response.Status.CREATED)
-                    .entity(Map.of(type + " " + request.getUdo().getName(), createdRecordString))
+                    .entity(createdEntity)
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (IllegalArgumentException e) {
@@ -227,14 +229,13 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
         Preconditions.checkNotNull(request.getUdoType());
         LOGGER.info(OPENDIC_MARKER, "Defining new UDO type: {}", request.getUdoType());
 
-        UserDefinedEntitySchema schema;
         try {
-            schema = UserDefinedEntitySchema.fromRequest(request);
-            var createdSchemaString = adminService.defineSchema(schema);
+            UserDefinedEntitySchema schema = UserDefinedEntitySchema.fromRequest(request);
+            UserDefinedEntitySchema createdSchema = adminService.defineSchema(schema);
             LOGGER.info(OPENDIC_MARKER, "Defined new udo type {}", request.getUdoType());
 
             return Response.status(Response.Status.CREATED)
-                    .entity(Map.of(request.getUdoType(), createdSchemaString))
+                    .entity(createdSchema.toUdoSchema())
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (IllegalArgumentException e) {
@@ -283,9 +284,9 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     public Response getPlatformMappingForUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         try {
-            PlatformMapping platformMapping = adminService.getPlatformMapping(type, platform).toPlatformMapping();
+            UserDefinedPlatformMapping platformMapping = adminService.getPlatformMapping(type, platform);
             return Response.status(Response.Status.OK)
-                    .entity(platformMapping)
+                    .entity(platformMapping.toPlatformMapping())
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (NotFoundException e) {
@@ -337,11 +338,11 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
         LOGGER.info(OPENDIC_MARKER, "Creating platform mapping {} --> {} : {}", type, platform, createPlatformMappingRequest);
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         Preconditions.checkNotNull(createPlatformMappingRequest.getPlatformMapping());
-        var userdefinedPlatformMapping = UserDefinedPlatformMapping.fromRequest(type, platform, createPlatformMappingRequest);
+        UserDefinedPlatformMapping userdefinedPlatformMapping = UserDefinedPlatformMapping.fromRequest(type, platform, createPlatformMappingRequest);
         try {
-            var created = adminService.createPlatformMapping(userdefinedPlatformMapping);
+            UserDefinedPlatformMapping created = adminService.createPlatformMapping(userdefinedPlatformMapping);
             return Response.status(Response.Status.CREATED)
-                    .entity(Map.of("Created" + type + "-->" + platform + "mapping", created))
+                    .entity(created.toPlatformMapping())
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (IOException e) {
@@ -358,10 +359,11 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
             securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         try {
-            var schemaMap = adminService.listMappingsForPlatform(platform);
-            LOGGER.info(OPENDIC_MARKER, "Listed mappings for platform {}: {}", platform, schemaMap);
+            List<UserDefinedPlatformMapping> mappings = adminService.listMappingsForPlatform(platform);
+            List<PlatformMapping> mappingsDto = mappings.stream().map(UserDefinedPlatformMapping::toPlatformMapping).toList();
+            LOGGER.info(OPENDIC_MARKER, "Listed mappings for platform {}: {}", platform, mappingsDto);
             return Response.status(Response.Status.OK)
-                    .entity(schemaMap)
+                    .entity(mappingsDto)
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (NotFoundException e) {

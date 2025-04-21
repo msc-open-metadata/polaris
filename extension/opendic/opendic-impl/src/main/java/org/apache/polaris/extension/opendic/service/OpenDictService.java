@@ -35,10 +35,7 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
-import org.apache.polaris.extension.opendic.model.PlatformMapping;
-import org.apache.polaris.extension.opendic.model.PlatformMappings;
-import org.apache.polaris.extension.opendic.model.Statement;
-import org.apache.polaris.extension.opendic.model.Udo;
+import org.apache.polaris.extension.opendic.model.*;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.slf4j.LoggerFactory;
@@ -48,7 +45,6 @@ import org.slf4j.MarkerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class OpenDictService extends PolarisAdminService {
 
@@ -77,28 +73,37 @@ public class OpenDictService extends PolarisAdminService {
         this.openDictDumpGenerator = openDictDumpGenerator;
     }
 
-    public String defineSchema(UserDefinedEntitySchema schema) throws AlreadyExistsException {
-        return icebergRepository.createTable(NAMESPACE, schema.typeName(), UserDefinedEntitySchema.getIcebergSchema(schema));
+    public UserDefinedEntitySchema defineSchema(UserDefinedEntitySchema schema) throws AlreadyExistsException {
+        var tableId = icebergRepository.createTable(NAMESPACE, schema.typeName(), schema.getIcebergSchema());
+        var dbSchema = icebergRepository.readTableSchema(tableId);
+        long createdTime = icebergRepository.getTableCreationTime(tableId);
+        long lastUpdatedTime = icebergRepository.getTableLastUpdateTime(tableId);
+        return UserDefinedEntitySchema.fromTableSchema(dbSchema, schema.typeName(), createdTime, lastUpdatedTime, 1);
     }
 
-    public Map<String, String> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
-        return icebergRepository.listTablesAsStringMap(NAMESPACE);
+    public List<UserDefinedEntitySchema> listUdoTypes(RealmContext realmContext, SecurityContext securityContext) {
+        return icebergRepository.listTableIds(NAMESPACE).stream().map(tableId -> {
+            var icebergSchema = icebergRepository.readTableSchema(tableId);
+            long createdTime = icebergRepository.getTableCreationTime(tableId);
+            long lastUpdatedTime = icebergRepository.getTableLastUpdateTime(tableId);
+            return UserDefinedEntitySchema.fromTableSchema(icebergSchema, tableId.name(), createdTime, lastUpdatedTime, 1);
+        }).toList();
     }
 
-    public String createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
+    public UserDefinedEntity createUdo(UserDefinedEntity entity) throws IOException, AlreadyExistsException {
         var schema = icebergRepository.readTableSchema(NAMESPACE, entity.typeName());
         var genericRecord = icebergRepository.createGenericRecord(schema, entity.toMap());
         icebergRepository.insertRecord(NAMESPACE, entity.typeName(), genericRecord);
-        return genericRecord.toString();
+        return UserDefinedEntity.fromRecord(genericRecord, entity.typeName());
     }
 
     // Modified to return a list of Udos instead of a list of string - for consistency with openAPI spec components
-    public List<Udo> listUdosOfType(String typeName) {
+    public List<UserDefinedEntity> listUdosOfType(String typeName) {
         var icebergSchema = icebergRepository.readTableSchema(NAMESPACE, typeName);
         try {
             List<Record> records = icebergRepository.readRecords(NAMESPACE, typeName);
             return records.stream()
-                    .map(record -> UserDefinedEntity.fromRecord(record, typeName).toUdo())
+                    .map(record -> UserDefinedEntity.fromRecord(record, typeName))
                     .toList();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -111,13 +116,13 @@ public class OpenDictService extends PolarisAdminService {
     }
 
 
-    public String createPlatformMapping(UserDefinedPlatformMapping mappingEntity) throws IOException {
+    public UserDefinedPlatformMapping createPlatformMapping(UserDefinedPlatformMapping mappingEntity) throws IOException {
         var schema = mappingEntity.icebergSchema();
         Preconditions.checkArgument(icebergRepository.listTableNames(NAMESPACE).contains(mappingEntity.typeName()), "Type does not exist");
         icebergRepository.createTableIfNotExists(PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), schema);
         var genericRecord = mappingEntity.toGenericRecord();
         icebergRepository.insertRecord(PLATFORM_MAPPINGS_NAMESPACE, mappingEntity.platformName(), genericRecord);
-        return genericRecord.toString();
+        return UserDefinedPlatformMapping.fromRecord(genericRecord);
     }
 
     public List<UserDefinedPlatformMapping> listMappingsForType(String typeName) {
@@ -188,11 +193,11 @@ public class OpenDictService extends PolarisAdminService {
         return result;
     }
 
-    public List<String> listMappingsForPlatform(String platformName) {
+    public List<UserDefinedPlatformMapping> listMappingsForPlatform(String platformName) {
         try {
             return icebergRepository.readRecords(PLATFORM_MAPPINGS_NAMESPACE, platformName)
                     .stream()
-                    .map(Record::toString)
+                    .map(UserDefinedPlatformMapping::fromRecord)
                     .toList();
         } catch (IOException e) {
             throw new RuntimeException(e);

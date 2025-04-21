@@ -329,8 +329,12 @@ components:
         lastUpdatedTimestamp:
           type: string
           description: The last update time represented as unix epoch timestamp in milliseconds
+        version:
+          type: integer
+          description: The version of the opendict spec when the object was retrieved
       required:
         - udoType
+        - properties
 
     CreateUdoRequest:
       type: object
@@ -361,14 +365,12 @@ components:
         props:
           type: object
           additionalProperties: { type: object }
-        createTimestamp:
-          type: integer
-          format: "int64"
-          description: The creation time represented as unix epoch timestamp in milliseconds
-        lastUpdateTimestamp:
-          type: integer
-          format: "int64"
-          description: The last update time represented as unix epoch timestamp in milliseconds
+        createdTimestamp:
+          type: string
+          description: The creation time as parseable OffsetDateTime string.
+        lastUpdatedTimestamp:
+          type: string
+          description: The last update time as parseable OffsetDateTime string.
         entityVersion:
           type: integer
           description: The version of the catalog object used to determine if the catalog metadata has changed
