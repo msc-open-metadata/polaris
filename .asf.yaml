@@ -72,6 +72,9 @@ github:
     # Adding renovate-bot as a collaborator, so CI doesn't need to be manually approved
     - renovate-bot
     - singhpk234
+    - gh-yzou
+    - nssalian
+    - adnanhemani
 
 notifications:
   commits:      commits@polaris.apache.org
