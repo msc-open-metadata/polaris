@@ -17,10 +17,10 @@
 
 openapi: 3.0.3
 info:
-  title: Polaris Extended Management Service
+  title: OpenDict Metadata Object API
   version: 0.0.2
   description: |
-    Extended API for Apache Polaris, including support for additional object types and management operations.
+    Extended API, including support for additional object types and management operations.
 servers:
   - url: "{scheme}://{host}/api/opendic/v1"
     description: Polaris OpenDict API Server
@@ -118,6 +118,38 @@ paths:
       responses:
         200:
           description: Udo deleted successfully
+        404:
+          description: Udo not found
+
+  /objects/{name}/{objectUname}:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: objectUname
+        in: path
+        required: true
+        schema:
+          type: string
+
+    put:
+      tags:
+        - Udo DDL
+      operationId: updateUdo
+      description: Update an existing Open dictionary metadata object of type {name}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUdoRequest"
+      responses:
+        200:
+          description: Udo updated successfully
+        400:
+          description: Invalid request data
         404:
           description: Udo not found
 

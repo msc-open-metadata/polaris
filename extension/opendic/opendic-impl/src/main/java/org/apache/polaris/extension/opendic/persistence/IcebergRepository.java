@@ -1,7 +1,6 @@
 package org.apache.polaris.extension.opendic.persistence;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -11,6 +10,7 @@ import org.apache.iceberg.data.IcebergGenerics;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.data.parquet.GenericParquetWriter;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.CloseableIterable;
@@ -208,7 +208,6 @@ public class IcebergRepository implements IBaseRepository {
         }
 
         DataFile dataFile = dataWriter.toDataFile();
-//        table.newAppend().appendFile(dataFile).commit();
 
         if (IN_MEM_CACHE) {
             var nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
@@ -358,7 +357,6 @@ public class IcebergRepository implements IBaseRepository {
         }
     }
 
-
     /**
      * Deletes an Iceberg table
      */
@@ -381,9 +379,14 @@ public class IcebergRepository implements IBaseRepository {
      * @param idValue      The value in id column of the record to delete. Example: "andfunc"
      */
     @Override
-    public void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue) {
+    public void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue) throws IOException {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
+
+        // Precondition check that the record exists
+        if (!containsRecordWithId(identifier, idColumnName, idValue)) {
+            throw new NotFoundException("Record with %s == %s does not exist in table %s", idColumnName, idValue.toString(), identifier.toString());
+        }
 
         Transaction tnx = table.newTransaction();
 
@@ -400,10 +403,10 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public void alterAddColumn(Namespace namespace, String tableName, String columnName, String columnType) {
-        throw new NotImplementedException();
+    public void replaceSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue, GenericRecord record) throws IOException {
+        deleteSingleRecord(namespace, tableName, idColumnName, idValue);
+        insertRecord(namespace, tableName, record);
     }
-
 
     /**
      * Reference: <a href="https://www.tabular.io/blog/java-api-part-2/">https://www.tabular.io/blog/java-api-part-2</a>

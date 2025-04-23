@@ -40,6 +40,7 @@ public record UserDefinedEntity(String typeName,
                                 OffsetDateTime lastUpdatedTimeStamp,
                                 int entityVersion) {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserDefinedEntity.class);
+    public static final String ID_COLUMN = "uname";
 
     public static UserDefinedEntity fromRequest(String typeName, CreateUdoRequest request) {
         Preconditions.checkNotNull(request);

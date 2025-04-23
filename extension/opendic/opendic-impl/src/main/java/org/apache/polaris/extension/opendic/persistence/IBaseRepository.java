@@ -67,12 +67,13 @@ public interface IBaseRepository {
 
     List<Record> readRecords(Table table) throws IOException;
 
-    List<Record > readRecordsWithValInCol(Namespace namespace, String tableName, String col, Object val) throws IOException;
+    List<Record> readRecordsWithValInCol(Namespace namespace, String tableName, String col, Object val) throws IOException;
 
     Record readRecordWithId(Namespace namespace, String tableName, String idColumnName, Object idValue) throws IOException;
-    Record readRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException;
-    Record readRecordWithId(Table table, String idColumnName, Object idValue) throws IOException;
 
+    Record readRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException;
+
+    Record readRecordWithId(Table table, String idColumnName, Object idValue) throws IOException;
 
 
     /**
@@ -89,23 +90,34 @@ public interface IBaseRepository {
      * Get the schema of an table {@code tableIdentifier}
      */
     Schema readTableSchema(TableIdentifier tableIdentifier);
+
     /**
-     * Deletes a single record from an Iceberg table
+     * Deletes a single record from a table
      *
      * @param tableName    The name of the table to delete from. Example: "function"
      * @param idColumnName The name of the ID column. Example: Name
-     * @param idValue      The value in id column of the record to delete. Example: "andfunc"
+     * @param idValue      The value in id column of the record to delete. Example: "func_v2"
      */
-    void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue);
+    void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue) throws IOException;
 
-    void alterAddColumn(Namespace namespace, String tableName, String columnName, String columnType);
+
+    /**
+     * Deletes and replaces an existing record.
+     * @param tableName    The name of the table to delete from. Example: "function"
+     * @param idColumnName The name of the ID column. Should be "uname"
+     * @param idValue      The value in id column of the record to delete. Example: "foo"
+     * @param record       The new record that replaces the existing one. Example: { "uname": "foo", "type": "function" }
+     */
+    void replaceSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue, GenericRecord record) throws IOException;
 
     void recordWithUnameExistsCheck(TableIdentifier tableIdentifier, String uname, String idColumnName, Object idValue) throws IOException;
 
     boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException;
 
     long getTableCreationTime(TableIdentifier tableIdentifier);
+
     long getTableLastUpdateTime(TableIdentifier tableIdentifier);
+
     /**
      * Get the catalog instance
      */

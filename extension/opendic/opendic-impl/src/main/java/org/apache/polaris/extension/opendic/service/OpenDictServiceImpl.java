@@ -253,6 +253,43 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
         }
     }
 
+
+    /**
+     * Update an existing UDO object of type {@code type}
+     * Path: {@code PUT /api/opendic/v1/objects/{type}/{objectName}}
+     *
+     * @param type The name of the UDO type to update
+     * @param createUdoRequest The request containing the updated UDO object
+     */
+    @Override
+    public Response updateUdo(String type, String objectName, CreateUdoRequest createUdoRequest,RealmContext realmContext,SecurityContext securityContext){
+        OpenDictService adminService = newAdminService(realmContext, securityContext);
+        Preconditions.checkNotNull(createUdoRequest.getUdo());
+        Preconditions.checkArgument(type.equals(createUdoRequest.getUdo().getType()), "Type in request does not match type in path");
+        Preconditions.checkArgument(objectName.equals(createUdoRequest.getUdo().getName()), "Name in request does not match name in path");
+        LOGGER.info(OPENDIC_MARKER, "Updating open {} {} props: {}", type, createUdoRequest.getUdo().getName(), createUdoRequest.getUdo().getProps());
+        try {
+            UserDefinedEntity entity = UserDefinedEntity.fromRequest(type, createUdoRequest);
+            UserDefinedEntity updatedEntity = adminService.updateUdo(type, objectName, entity);
+            return Response.status(Response.Status.OK)
+                    .entity(updatedEntity)
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (IllegalArgumentException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to validate object {} against schema: {}. Error: {}", createUdoRequest.getUdo().getName(), type, e.getMessage(), e);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("Failed to validate object against schema", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (AlreadyExistsException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to update UDO {}: {}", createUdoRequest.getUdo().getName(), e.getMessage(), e);
+            return Response.status(Response.Status.CONFLICT)
+                    .entity(Map.of("UDO already exists", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+    }
+
     /**
      * List all platform mappings for a specific object {@code type}
      * Path: {@code GET /api/opendic/v1/objects/{type}/platforms}

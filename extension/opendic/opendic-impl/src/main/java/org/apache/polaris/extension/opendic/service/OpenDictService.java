@@ -23,6 +23,7 @@ import com.google.common.base.Preconditions;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -35,7 +36,9 @@ import org.apache.polaris.core.secrets.UserSecretsManager;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
-import org.apache.polaris.extension.opendic.model.*;
+import org.apache.polaris.extension.opendic.model.PlatformMapping;
+import org.apache.polaris.extension.opendic.model.PlatformMappings;
+import org.apache.polaris.extension.opendic.model.Statement;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.slf4j.LoggerFactory;
@@ -43,6 +46,7 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -130,9 +134,7 @@ public class OpenDictService extends PolarisAdminService {
         List<Record> matchedRecords = new ArrayList<>();
         try {
             for (var tableId : tableIds) {
-                if (icebergRepository.containsRecordWithId(tableId, UserDefinedPlatformMapping.ID_COLUMN, typeName)) {
-                    matchedRecords.add(icebergRepository.readRecordWithId(tableId, UserDefinedPlatformMapping.ID_COLUMN, typeName));
-                }
+                matchedRecords.add(icebergRepository.readRecordWithId(tableId, UserDefinedPlatformMapping.ID_COLUMN, typeName));
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -161,6 +163,28 @@ public class OpenDictService extends PolarisAdminService {
                             UserDefinedPlatformMapping.ID_COLUMN,
                             typeName));
             return openDictDumpGenerator.dumpStatements(entities, platformMapping);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public UserDefinedEntity updateUdo(String type, String objectName, UserDefinedEntity newEntity) {
+        var schema = icebergRepository.readTableSchema(NAMESPACE, newEntity.typeName());
+        try {
+            Record oldRecord = icebergRepository.readRecordWithId(NAMESPACE, type, UserDefinedEntity.ID_COLUMN, objectName);
+            var oldEntity = UserDefinedEntity.fromRecord(oldRecord, type);
+            var updatedEntity = UserDefinedEntity.builder()
+                    .setObjectType(type)
+                    .setName(objectName)
+                    .setProps(newEntity.props())
+                    .setEntityVersion(1)
+                    .setCreateTimestamp(oldEntity.createdTimeStamp())
+                    .setLastUpdateTimestamp(OffsetDateTime.now())
+                    .build();
+
+            GenericRecord updatedRecord = icebergRepository.createGenericRecord(schema, updatedEntity.toMap());
+            icebergRepository.replaceSingleRecord(NAMESPACE, type, UserDefinedEntity.ID_COLUMN, objectName, updatedRecord);
+            return updatedEntity;
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
