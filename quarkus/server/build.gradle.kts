@@ -48,9 +48,8 @@ dependencies {
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-service"))
 
-  if (project.hasProperty("eclipseLinkDeps")) {
-    runtimeOnly(project(":polaris-eclipselink"))
-  }
+  runtimeOnly(project(":polaris-eclipselink"))
+  runtimeOnly("org.postgresql:postgresql")
 
   /*opendic api extension:*/
   if (project.hasProperty("includeOpendic")) {
