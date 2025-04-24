@@ -50,9 +50,9 @@ class OpenDictSqlDumpGeneratorTest {
                                 "language", "python",
                                 "runtime", "3.10",
                                 "packages", List.of("numpy", "pandas"),
-                                "def", """
-                                                def foo(arg1, arg2):
-                                                        return arg1 + arg2""",
+                                "def", String.join("\n",
+                                        "def foo(arg1, arg2):",
+                                        "       return arg1 + arg2"),
                                 "comment", "foo function",
                                 "handler", "foo",
                                 "return_type", "int"
@@ -64,24 +64,26 @@ class OpenDictSqlDumpGeneratorTest {
                         .setEntityVersion(1)
                         .setProps(Map.of("language", "python",
                                 "runtime", "3.10",
-                                "def", """
-                                        def foo():
-                                                print('Hello World')""",
+                                "def", String.join("\n",
+                                                "def foo():",
+                                        "       print('Hello World')",
+                                        "           return None"
+                                ),
                                 "comment", "foo function",
                                 "handler", "foo",
                                 "signature", "foo()",
                                 "return_type", "void"
                         )).build());
 
-        String syntaxSimple = """
-                CREATE OR ALTER <type> <signature>
-                    RETURNS <return_type>
-                    LANGUAGE <language>
-                    RUNTIME = <runtime>
-                    HANDLER = '<name>'
-                    AS $$
-                    <def>
-                    $$""";
+        String syntaxSimple = String.join("\n",
+                "CREATE OR ALTER <type> <signature>",
+                "   RETURNS <return_type>",
+                "   LANGUAGE <language>",
+                "   RUNTIME = <runtime>",
+                "   HANDLER = '<name>'",
+                "   AS $$",
+                "   <def>",
+                "   $$");
         String typeNameSimple = "function";
         String platformNameSimple = "snowflake";
         platformMappingSimple = UserDefinedPlatformMapping.builder().setTypeName(typeNameSimple)
@@ -89,16 +91,17 @@ class OpenDictSqlDumpGeneratorTest {
                 .setTemplateSyntax(syntaxSimple)
                 .build();
 
-        String syntaxComplex = """
-                CREATE OR ALTER <type> <name>(<args>)
-                    RETURNS <return_type>
-                    LANGUAGE <language>
-                    PACKAGES = (<packages>)
-                    RUNTIME = <runtime>
-                    HANDLER = '<name>'
-                    AS $$
-                    <def>
-                    $$""";
+        String syntaxComplex = String.join("\n",
+                "CREATE OR ALTER <type> <name>(<args>)",
+                "   RETURNS <return_type>",
+                "   LANGUAGE <language>",
+                "   PACKAGES = (<packages>)",
+                "   RUNTIME = <runtime>",
+                "   HANDLER = '<name>'",
+                "   AS $$",
+                "   <def>",
+                "   $$");
+
         Map<String, UserDefinedPlatformMapping.AdditionalSyntaxProps> additionalSyntaxPropsMap = Map.of(
                 "args", UserDefinedPlatformMapping.AdditionalSyntaxProps.builder()
                         .setPropType("map")
@@ -121,16 +124,18 @@ class OpenDictSqlDumpGeneratorTest {
     @Test
     void testEntityDumpSimple() {
         Statement expected = Statement.builder()
-                .setDefinition("""
-                        CREATE OR ALTER function foo()
-                            RETURNS void
-                            LANGUAGE python
-                            RUNTIME = 3.10
-                            HANDLER = 'foo'
-                            AS $$
-                            def foo():
-                                print('Hello World')
-                            $$""").build();
+                .setDefinition(
+                        String.join("\n",
+                                "CREATE OR ALTER function foo()",
+                                "   RETURNS void",
+                                "   LANGUAGE python",
+                                "   RUNTIME = 3.10",
+                                "   HANDLER = 'foo'",
+                                "   AS $$",
+                                "   def foo():",
+                                "       print('Hello World')",
+                                "           return None",
+                                "   $$")).build();
 
         Statement actual = openDictSqlDumpGenerator.entityDump(entitiesSimple.getFirst(),
                 platformMappingSimple.templateSyntax(),
@@ -143,18 +148,19 @@ class OpenDictSqlDumpGeneratorTest {
     @Test
     void testEntitiesComplex() {
         Statement expected = Statement.builder()
-                .setDefinition("""
-                        CREATE OR ALTER function foo(arg1 int, arg2 int)
-                            RETURNS int
-                            LANGUAGE python
-                            PACKAGES = ('numpy', 'pandas')
-                            RUNTIME = 3.10
-                            HANDLER = 'foo'
-                            AS $$
-                            def foo(arg1, arg2):
-                                return arg1 + arg2
-                            $$""").build();
-
+                .setDefinition(String.join(
+                        "\n",
+                        "CREATE OR ALTER function foo(arg1 int, arg2 int)",
+                        "   RETURNS int",
+                        "   LANGUAGE python",
+                        "   PACKAGES = ('numpy', 'pandas')",
+                        "   RUNTIME = 3.10",
+                        "   HANDLER = 'foo'",
+                        "   AS $$",
+                        "   def foo(arg1, arg2):",
+                        "       return arg1 + arg2",
+                        "   $$"
+                )).build();
         var syntaxTupleList = platformMappingComplex.getSyntaxTupleList();
         Statement actual = openDictSqlDumpGenerator.entityDump(entitiesComplex.getFirst(),
                 platformMappingComplex.templateSyntax(),
