@@ -101,9 +101,8 @@ public class OpenDictService extends PolarisAdminService {
         return UserDefinedEntity.fromRecord(genericRecord, entity.typeName());
     }
 
-    // Modified to return a list of Udos instead of a list of string - for consistency with openAPI spec components
     public List<UserDefinedEntity> listUdosOfType(String typeName) {
-        var icebergSchema = icebergRepository.readTableSchema(NAMESPACE, typeName);
+        LOGGER.info(OPENDIC_MARKER, "Listing UDOs of type: {}", typeName);
         try {
             List<Record> records = icebergRepository.readRecords(NAMESPACE, typeName);
             return records.stream()
@@ -226,6 +225,17 @@ public class OpenDictService extends PolarisAdminService {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public List<Statement> pullPlatformStatements(String platformName) {
+        List<UserDefinedPlatformMapping> mappings = listMappingsForPlatform(platformName);
+        LOGGER.info(OPENDIC_MARKER, "Pulling statements for platform: {}, mapping count: {}", platformName, mappings.size());
+        List<Statement> statements = new ArrayList<>();
+        mappings.forEach(mapping -> {
+            List<UserDefinedEntity> entities = listUdosOfType(mapping.typeName());
+            statements.addAll(openDictDumpGenerator.dumpStatements(entities, mapping));
+        });
+        return statements;
     }
 
 }

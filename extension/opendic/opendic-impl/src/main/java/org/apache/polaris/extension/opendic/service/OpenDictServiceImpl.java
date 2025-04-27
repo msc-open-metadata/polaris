@@ -258,11 +258,11 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      * Update an existing UDO object of type {@code type}
      * Path: {@code PUT /api/opendic/v1/objects/{type}/{objectName}}
      *
-     * @param type The name of the UDO type to update
+     * @param type             The name of the UDO type to update
      * @param createUdoRequest The request containing the updated UDO object
      */
     @Override
-    public Response updateUdo(String type, String objectName, CreateUdoRequest createUdoRequest,RealmContext realmContext,SecurityContext securityContext){
+    public Response updateUdo(String type, String objectName, CreateUdoRequest createUdoRequest, RealmContext realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         Preconditions.checkNotNull(createUdoRequest.getUdo());
         Preconditions.checkArgument(type.equals(createUdoRequest.getUdo().getType()), "Type in request does not match type in path");
@@ -440,6 +440,32 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
             LOGGER.error(OPENDIC_MARKER, "Failed to delete mappings for platform: {}", platform);
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(Map.of("No mappings for platform snowflake found", platform))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+    }
+
+    /**
+     * Pull the dump statements for a specific platform.
+     * Path: {@code GET /api/opendic/v1/platforms/{platform}/pull}
+     *
+     * @param platform The name of the platform
+     * @return Json response with a list of dump statements for the platform.
+     */
+    @Override
+
+    public Response pullPlatform(String platform, RealmContext realmContext, SecurityContext securityContext) {
+        OpenDictService adminService = newAdminService(realmContext, securityContext);
+        List<Statement> statements = adminService.pullPlatformStatements(platform);
+        try {
+            return Response.status(Response.Status.OK)
+                    .entity(statements)
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (NotFoundException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to pull platform {}: {}", platform, e.getMessage(), e);
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("Platform not found", e.getMessage(), "platform", platform, "trace", e.getStackTrace()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }

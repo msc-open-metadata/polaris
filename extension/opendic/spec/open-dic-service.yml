@@ -312,6 +312,31 @@ paths:
         404:
           description: Platform not found not found for object.
 
+  /platforms/{platform}/pull:
+    parameters:
+      - name: platform
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags:
+        - Synchronize
+      operationId: pullPlatform
+      description: Pull all objects with a mapping to a the request {platform} system as sql dump. GET platforms/snowflake/pull RETURNS {statements:[CREATE OR REPLACE FUNCTION ..., ]}
+      responses:
+        200:
+          description: A list of objects with a mapping to {platform} as {Statement} objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Statement"
+        404:
+          description: No mappings for platform
+
 components:
 
   securitySchemes:
