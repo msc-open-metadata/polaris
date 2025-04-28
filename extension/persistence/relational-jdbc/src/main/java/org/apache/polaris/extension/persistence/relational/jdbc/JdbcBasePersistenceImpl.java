@@ -23,6 +23,7 @@ import static org.apache.polaris.extension.persistence.relational.jdbc.QueryGene
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -86,44 +87,14 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       PolarisBaseEntity originalEntity) {
-    ModelEntity modelEntity = ModelEntity.fromEntity(entity);
-    String query;
-    if (originalEntity == null) {
-      try {
-        query = generateInsertQuery(modelEntity, realmId);
-        datasourceOperations.executeUpdate(query);
-      } catch (SQLException e) {
-        if ((datasourceOperations.isConstraintViolation(e)
-            || datasourceOperations.isAlreadyExistsException(e))) {
-          throw new EntityAlreadyExistsException(entity);
-        } else {
-          throw new RuntimeException(
-              String.format("Failed to write entity due to %s", e.getMessage()));
-        }
-      }
-    } else {
-      Map<String, Object> params =
-          Map.of(
-              "id",
-              originalEntity.getId(),
-              "catalog_id",
-              originalEntity.getCatalogId(),
-              "entity_version",
-              originalEntity.getEntityVersion(),
-              "realm_id",
-              realmId);
-      query = generateUpdateQuery(modelEntity, params);
-      try {
-        int rowsUpdated = datasourceOperations.executeUpdate(query);
-        if (rowsUpdated == 0) {
-          throw new RetryOnConcurrencyException(
-              "Entity '%s' id '%s' concurrently modified; expected version %s",
-              entity.getName(), entity.getId(), originalEntity.getEntityVersion());
-        }
-      } catch (SQLException e) {
-        throw new RuntimeException(
-            String.format("Failed to write entity due to %s", e.getMessage()));
-      }
+    try {
+      datasourceOperations.runWithinTransaction(
+          statement -> {
+            persistEntity(callCtx, entity, originalEntity, statement);
+            return true;
+          });
+    } catch (SQLException e) {
+      throw new RuntimeException("Error persisting entity", e);
     }
   }
 
@@ -137,77 +108,79 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           statement -> {
             for (int i = 0; i < entities.size(); i++) {
               PolarisBaseEntity entity = entities.get(i);
-              ModelEntity modelEntity = ModelEntity.fromEntity(entity);
+              PolarisBaseEntity originalEntity =
+                  originalEntities != null ? originalEntities.get(i) : null;
 
               // first, check if the entity has already been created, in which case we will simply
               // return it.
               PolarisBaseEntity entityFound =
                   lookupEntity(
                       callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
-              if (entityFound != null) {
+              if (entityFound != null && originalEntity == null) {
                 // probably the client retried, simply return it
                 // TODO: Check correctness of returning entityFound vs entity here. It may have
                 // already been updated after the creation.
                 continue;
               }
-              // lookup by name
-              EntityNameLookupRecord exists =
-                  lookupEntityIdAndSubTypeByName(
-                      callCtx,
-                      entity.getCatalogId(),
-                      entity.getParentId(),
-                      entity.getTypeCode(),
-                      entity.getName());
-              if (exists != null) {
-                throw new EntityAlreadyExistsException(entity);
-              }
-              String query;
-              if (originalEntities == null || originalEntities.get(i) == null) {
-                try {
-                  query = generateInsertQuery(modelEntity, realmId);
-                  statement.executeUpdate(query);
-                } catch (SQLException e) {
-                  if ((datasourceOperations.isConstraintViolation(e)
-                      || datasourceOperations.isAlreadyExistsException(e))) {
-                    throw new EntityAlreadyExistsException(entity);
-                  } else {
-                    throw new RuntimeException(
-                        String.format("Failed to write entity due to %s", e.getMessage()));
-                  }
-                }
-              } else {
-                Map<String, Object> params =
-                    Map.of(
-                        "id",
-                        originalEntities.get(i).getId(),
-                        "catalog_id",
-                        originalEntities.get(i).getCatalogId(),
-                        "entity_version",
-                        originalEntities.get(i).getEntityVersion(),
-                        "realm_id",
-                        realmId);
-                query = generateUpdateQuery(modelEntity, params);
-                try {
-                  int rowsUpdated = statement.executeUpdate(query);
-                  if (rowsUpdated == 0) {
-                    throw new RetryOnConcurrencyException(
-                        "Entity '%s' id '%s' concurrently modified; expected version %s",
-                        entity.getName(),
-                        entity.getId(),
-                        originalEntities.get(i).getEntityVersion());
-                  }
-                } catch (SQLException e) {
-                  throw new RuntimeException(
-                      String.format("Failed to write entity due to %s", e.getMessage()));
-                }
-              }
+              persistEntity(callCtx, entity, originalEntity, statement);
             }
             return true;
           });
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
-              "Error executing the transaction for writing entities due to %s", e.getMessage()));
+              "Error executing the transaction for writing entities due to %s", e.getMessage()),
+          e);
+    }
+  }
+
+  private void persistEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      PolarisBaseEntity originalEntity,
+      Statement statement)
+      throws SQLException {
+    ModelEntity modelEntity = ModelEntity.fromEntity(entity);
+    if (originalEntity == null) {
+      try {
+        statement.executeUpdate(generateInsertQuery(modelEntity, realmId));
+      } catch (SQLException e) {
+        if (datasourceOperations.isConstraintViolation(e)) {
+          PolarisBaseEntity existingEntity =
+              lookupEntityByName(
+                  callCtx,
+                  entity.getCatalogId(),
+                  entity.getParentId(),
+                  entity.getTypeCode(),
+                  entity.getName());
+          throw new EntityAlreadyExistsException(existingEntity, e);
+        } else {
+          throw new RuntimeException(
+              String.format("Failed to write entity due to %s", e.getMessage()), e);
+        }
+      }
+    } else {
+      Map<String, Object> params =
+          Map.of(
+              "id",
+              originalEntity.getId(),
+              "catalog_id",
+              originalEntity.getCatalogId(),
+              "entity_version",
+              originalEntity.getEntityVersion(),
+              "realm_id",
+              realmId);
+      try {
+        int rowsUpdated = statement.executeUpdate(generateUpdateQuery(modelEntity, params));
+        if (rowsUpdated == 0) {
+          throw new RetryOnConcurrencyException(
+              "Entity '%s' id '%s' concurrently modified; expected version %s",
+              originalEntity.getName(), originalEntity.getId(), originalEntity.getEntityVersion());
+        }
+      } catch (SQLException e) {
+        throw new RuntimeException(
+            String.format("Failed to write entity due to %s", e.getMessage()), e);
+      }
     }
   }
 
@@ -220,7 +193,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(query);
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to write to grant records due to %s", e.getMessage()));
+          String.format("Failed to write to grant records due to %s", e.getMessage()), e);
     }
   }
 
@@ -239,7 +212,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(generateDeleteQuery(ModelEntity.class, params));
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to delete entity due to %s", e.getMessage()));
+          String.format("Failed to delete entity due to %s", e.getMessage()), e);
     }
   }
 
@@ -252,7 +225,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(query);
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to delete from grant records due to %s", e.getMessage()));
+          String.format("Failed to delete from grant records due to %s", e.getMessage()), e);
     }
   }
 
@@ -266,7 +239,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(generateDeleteQueryForEntityGrantRecords(entity, realmId));
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to delete grant records due to %s", e.getMessage()));
+          String.format("Failed to delete grant records due to %s", e.getMessage()), e);
     }
   }
 
@@ -277,7 +250,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       datasourceOperations.executeUpdate(generateDeleteAll(ModelGrantRecord.class, realmId));
       datasourceOperations.executeUpdate(generateDeleteAll(ModelEntity.class, realmId));
     } catch (SQLException e) {
-      throw new RuntimeException(String.format("Failed to delete all due to %s", e.getMessage()));
+      throw new RuntimeException(
+          String.format("Failed to delete all due to %s", e.getMessage()), e);
     }
   }
 
@@ -331,7 +305,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       }
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve polaris entity due to %s", e.getMessage()));
+          String.format("Failed to retrieve polaris entity due to %s", e.getMessage()), e);
     }
   }
 
@@ -346,7 +320,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           query, ModelEntity.class, ModelEntity::toEntity, null, Integer.MAX_VALUE);
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()));
+          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
     }
   }
 
@@ -440,7 +414,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           : results.stream().filter(entityFilter).map(transformer).collect(Collectors.toList());
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()));
+          String.format("Failed to retrieve polaris entities due to %s", e.getMessage()), e);
     }
   }
 
@@ -490,11 +464,13 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
         throw new IllegalStateException(
             String.format(
                 "More than one grant record %s for a given Grant record", results.getFirst()));
+      } else if (results.isEmpty()) {
+        return null;
       }
       return results.getFirst();
     } catch (SQLException e) {
       throw new RuntimeException(
-          String.format("Failed to retrieve grant record due to %s", e.getMessage()));
+          String.format("Failed to retrieve grant record due to %s", e.getMessage()), e);
     }
   }
 
@@ -524,7 +500,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format(
               "Failed to retrieve grant records for securableCatalogId: %s securableId: %s due to %s",
-              securableCatalogId, securableId, e.getMessage()));
+              securableCatalogId, securableId, e.getMessage()),
+          e);
     }
   }
 
@@ -549,7 +526,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
       throw new RuntimeException(
           String.format(
               "Failed to retrieve grant records for granteeCatalogId: %s granteeId: %s due to %s",
-              granteeCatalogId, granteeId, e.getMessage()));
+              granteeCatalogId, granteeId, e.getMessage()),
+          e);
     }
   }
 
@@ -575,8 +553,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
     } catch (SQLException e) {
       throw new RuntimeException(
           String.format(
-              "Failed to retrieve entities for catalogId: %s due to %s",
-              catalogId, e.getMessage()));
+              "Failed to retrieve entities for catalogId: %s due to %s", catalogId, e.getMessage()),
+          e);
     }
   }
 
@@ -602,7 +580,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to retrieve principal secrets for clientId: %s", clientId));
+          String.format("Failed to retrieve principal secrets for clientId: %s", clientId), e);
     }
   }
 
@@ -638,7 +616,8 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e);
       throw new RuntimeException(
           String.format(
-              "Failed to generate new principal secrets for principalId: %s", principalId));
+              "Failed to generate new principal secrets for principalId: %s", principalId),
+          e);
     }
     // if not found, return null
     return principalSecrets;
@@ -696,7 +675,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to rotatePrincipalSecrets for clientId: %s", clientId));
+          String.format("Failed to rotatePrincipalSecrets for clientId: %s", clientId), e);
     }
 
     // return those
@@ -718,7 +697,7 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
           e.getMessage(),
           e);
       throw new RuntimeException(
-          String.format("Failed to delete principalSecrets for clientId: %s", clientId));
+          String.format("Failed to delete principalSecrets for clientId: %s", clientId), e);
     }
   }
 

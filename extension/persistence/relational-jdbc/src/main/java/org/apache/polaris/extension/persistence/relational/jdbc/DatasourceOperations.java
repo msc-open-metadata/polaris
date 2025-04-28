@@ -35,13 +35,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import javax.sql.DataSource;
 import org.apache.polaris.extension.persistence.relational.jdbc.models.Converter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DatasourceOperations {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DatasourceOperations.class);
 
-  private static final String ALREADY_EXISTS_STATE_POSTGRES = "42P07";
   private static final String CONSTRAINT_VIOLATION_SQL_CODE = "23505";
 
   private final DataSource datasource;
@@ -77,11 +73,8 @@ public class DatasourceOperations {
             if (line.endsWith(";")) { // Execute statement when semicolon is found
               String sql = sqlBuffer.toString().trim();
               try {
-                int rowsUpdated = statement.executeUpdate(sql);
-                LOGGER.debug("Query {} executed {} rows affected", sql, rowsUpdated);
+                statement.executeUpdate(sql);
               } catch (SQLException e) {
-                LOGGER.error("Error executing query {}", sql, e);
-                // re:throw this as unhandled exception
                 throw new RuntimeException(e);
               }
               sqlBuffer.setLength(0); // Clear the buffer for the next statement
@@ -92,11 +85,7 @@ public class DatasourceOperations {
         connection.setAutoCommit(autoCommit);
       }
     } catch (IOException e) {
-      LOGGER.debug("Error reading the script file", e);
       throw new RuntimeException(e);
-    } catch (SQLException e) {
-      LOGGER.debug("Error executing the script file", e);
-      throw e;
     }
   }
 
@@ -135,7 +124,6 @@ public class DatasourceOperations {
       }
       return resultList;
     } catch (SQLException e) {
-      LOGGER.debug("Error executing query {}", query, e);
       throw e;
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -156,9 +144,6 @@ public class DatasourceOperations {
       connection.setAutoCommit(true);
       try {
         return statement.executeUpdate(query);
-      } catch (SQLException e) {
-        LOGGER.debug("Error executing query {}", query, e);
-        throw e;
       } finally {
         connection.setAutoCommit(autoCommit);
       }
@@ -188,9 +173,6 @@ public class DatasourceOperations {
         }
         connection.setAutoCommit(autoCommit);
       }
-    } catch (SQLException e) {
-      LOGGER.debug("Caught Error while executing transaction", e);
-      throw e;
     }
   }
 
@@ -201,10 +183,6 @@ public class DatasourceOperations {
 
   public boolean isConstraintViolation(SQLException e) {
     return CONSTRAINT_VIOLATION_SQL_CODE.equals(e.getSQLState());
-  }
-
-  public boolean isAlreadyExistsException(SQLException e) {
-    return ALREADY_EXISTS_STATE_POSTGRES.equals(e.getSQLState());
   }
 
   private Connection borrowConnection() throws SQLException {
