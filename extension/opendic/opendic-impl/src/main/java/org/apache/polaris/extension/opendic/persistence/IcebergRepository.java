@@ -189,7 +189,7 @@ public class IcebergRepository implements IBaseRepository {
         // Begin transaction.
         Transaction tnx = table.newTransaction();
         // Create a temporary file for the new data
-        String filepath = table.location() + "/" + UUID.randomUUID();
+        String filepath = table.location() + "/" + UUID.randomUUID() + ".parquet";
         OutputFile file = table.io().newOutputFile(filepath);
 
         DataWriter<GenericRecord> dataWriter =
