@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: OpenDict Metadata Object API
   version: 0.0.2
@@ -152,6 +152,32 @@ paths:
           description: Invalid request data
         404:
           description: Udo not found
+
+  /objects/{name}/batch:
+    parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Udo DDL
+      operationId: batchCreateUdo
+      description: Batch create Open dictionary metadata objects of type {name}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/Udo"
+      responses:
+        201:
+          description: Udos created successfully
+        400:
+          description: Invalid request data
 
   /objects/{name}/platforms:
     parameters:
