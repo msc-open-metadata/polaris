@@ -16,54 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.jpa.models;
+package org.apache.polaris.extension.persistence.relational.jdbc.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
-import org.eclipse.persistence.annotations.PrimaryKey;
 
-@Entity
-@Table(
-    name = "POLICY_MAPPING_RECORDS",
-    indexes = {
-      @Index(
-          name = "POLICY_MAPPING_RECORDS_BY_POLICY_INDEX",
-          columnList = "policyCatalogId,policyId,targetCatalogId,targetId")
-    })
-@PrimaryKey(
-    columns = {
-      @Column(name = "targetCatalogId"),
-      @Column(name = "targetId"),
-      @Column(name = "policyTypeCode"),
-      @Column(name = "policyCatalogId"),
-      @Column(name = "policyId")
-    })
-public class ModelPolicyMappingRecord {
+public class ModelPolicyMappingRecord implements Converter<ModelPolicyMappingRecord> {
   // id of the catalog where target entity resides
-  @Id private long targetCatalogId;
+  private long targetCatalogId;
 
   // id of the target entity
-  @Id private long targetId;
+  private long targetId;
 
   // id associated to the policy type
-  @Id private int policyTypeCode;
+  private int policyTypeCode;
 
   // id of the catalog where the policy entity resides
-  @Id private long policyCatalogId;
+  private long policyCatalogId;
 
   // id of the policy
-  @Id private long policyId;
+  private long policyId;
 
   // additional parameters of the mapping
   private String parameters;
-
-  // Used for Optimistic Locking to handle concurrent reads and updates
-  @Version private long version;
 
   public long getTargetCatalogId() {
     return targetCatalogId;
@@ -135,15 +113,6 @@ public class ModelPolicyMappingRecord {
     }
   }
 
-  public void update(PolarisPolicyMappingRecord record) {
-    this.targetCatalogId = record.getTargetCatalogId();
-    this.targetId = record.getTargetId();
-    this.policyTypeCode = record.getPolicyTypeCode();
-    this.policyCatalogId = record.getPolicyCatalogId();
-    this.policyId = record.getPolicyId();
-    this.parameters = record.getParameters();
-  }
-
   public static ModelPolicyMappingRecord fromPolicyMappingRecord(
       PolarisPolicyMappingRecord record) {
     if (record == null) return null;
@@ -168,5 +137,29 @@ public class ModelPolicyMappingRecord {
         model.getPolicyId(),
         model.getPolicyTypeCode(),
         model.getParameters());
+  }
+
+  @Override
+  public ModelPolicyMappingRecord fromResultSet(ResultSet rs) throws SQLException {
+    return ModelPolicyMappingRecord.builder()
+        .targetCatalogId(rs.getObject("target_catalog_id", Long.class))
+        .targetId(rs.getObject("target_id", Long.class))
+        .policyTypeCode(rs.getObject("policy_type_code", Integer.class))
+        .policyCatalogId(rs.getObject("policy_catalog_id", Long.class))
+        .policyId(rs.getObject("policy_id", Long.class))
+        .parameters(rs.getString("parameters"))
+        .build();
+  }
+
+  @Override
+  public Map<String, Object> toMap() {
+    Map<String, Object> map = new HashMap<>();
+    map.put("target_catalog_id", targetCatalogId);
+    map.put("target_id", targetId);
+    map.put("policy_type_code", policyTypeCode);
+    map.put("policy_catalog_id", policyCatalogId);
+    map.put("policy_id", policyId);
+    map.put("parameters", parameters);
+    return map;
   }
 }

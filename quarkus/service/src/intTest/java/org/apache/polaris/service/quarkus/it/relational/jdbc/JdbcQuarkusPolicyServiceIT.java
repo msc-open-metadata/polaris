@@ -16,21 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.catalog;
+package org.apache.polaris.service.quarkus.it.relational.jdbc;
 
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
-import jakarta.annotation.Nullable;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.InMemoryEntityCache;
+import org.apache.polaris.service.it.test.PolarisPolicyServiceIntegrationTest;
+import org.apache.polaris.test.commons.RelationalJdbcProfile;
 
-@QuarkusTest
-@TestProfile(IcebergCatalogTest.Profile.class)
-public class PolarisCatalogWithEntityCacheTest extends IcebergCatalogTest {
-
-  @Nullable
-  @Override
-  protected InMemoryEntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager) {
-    return new InMemoryEntityCache(metaStoreManager);
-  }
-}
+@TestProfile(RelationalJdbcProfile.class)
+@QuarkusIntegrationTest
+public class JdbcQuarkusPolicyServiceIT extends PolarisPolicyServiceIntegrationTest {}
