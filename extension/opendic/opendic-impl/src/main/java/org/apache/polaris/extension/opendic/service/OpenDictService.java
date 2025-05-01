@@ -101,6 +101,18 @@ public class OpenDictService extends PolarisAdminService {
         return UserDefinedEntity.fromRecord(genericRecord, entity.typeName());
     }
 
+    public List<UserDefinedEntity> createUdos(String type, List<UserDefinedEntity> entities) throws IOException {
+        var schema = icebergRepository.readTableSchema(NAMESPACE, type);
+        List<GenericRecord> records = entities.stream()
+                .map(entity -> icebergRepository.createGenericRecord(schema, entity.toMap()))
+                .toList();
+        icebergRepository.insertRecords(NAMESPACE, type, records);
+        return records.stream()
+                .map(record -> UserDefinedEntity.fromRecord(record, type))
+                .toList();
+    }
+
+
     public List<UserDefinedEntity> listUdosOfType(String typeName) {
         LOGGER.info(OPENDIC_MARKER, "Listing UDOs of type: {}", typeName);
         try {

@@ -107,6 +107,7 @@ public class OpenDictSqlDumpGenerator implements IOpenDictDumpGenerator {
     }
 
     private String handleSpecialObjectSyntax(Object complexObj, AdditionalSyntaxProps additionalSyntaxProps) {
+        Preconditions.checkNotNull(complexObj, "Cannot handle syntax for null obiect");
         switch (complexObj) {
             case Map<?, ?> map -> {
                 Preconditions.checkArgument(additionalSyntaxProps.propType().equalsIgnoreCase("map"), "Expected a map type for additional syntax properties");
@@ -144,7 +145,7 @@ public class OpenDictSqlDumpGenerator implements IOpenDictDumpGenerator {
                 return result.toString();
             }
             default ->
-                    throw new UnsupportedOperationException("Unsupported complex object type: " + complexObj.getClass().getName() + "for " + additionalSyntaxProps.propType());
+                    throw new UnsupportedOperationException("Unsupported complex object type: " + complexObj + "for " + additionalSyntaxProps.propType());
         }
     }
 }

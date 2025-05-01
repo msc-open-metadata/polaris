@@ -22,6 +22,7 @@ package org.apache.polaris.extension.opendic.service;
 import com.google.common.base.Preconditions;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -212,6 +213,62 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
             LOGGER.error(OPENDIC_MARKER, "I/O error creating UDO {}: {}", request.getUdo().getName(), e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(Map.of("I/O error", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        }
+    }
+
+    /**
+     * Batch create UDO objects of type {@code type}
+     * Path: {@code POST /api/opendic/v1/objects/{type}/batch}
+     *
+     * @param type The type of udos to batch create
+     * @param udos The list of UDO objects to create
+     */
+    @Override
+    public Response batchCreateUdo(String type, List<@Valid Udo> udos, RealmContext realmContext, SecurityContext securityContext) {
+        OpenDictService adminService = newAdminService(realmContext, securityContext);
+        Preconditions.checkNotNull(udos);
+        LOGGER.info(OPENDIC_MARKER, "Batch creating {} open {}s", udos.size(), type);
+
+        var udosRequests = udos.stream()
+                .map(udo -> CreateUdoRequest.builder().setUdo(udo).build())
+                .toList();
+        List<UserDefinedEntity> createEntities = udosRequests.stream()
+                .map(createUdoRequest -> UserDefinedEntity.fromRequest(type, createUdoRequest))
+                .toList();
+
+        try {
+            List<UserDefinedEntity> createdEntities = adminService.createUdos(type, createEntities);
+            List<Udo> createdUdos = createdEntities.stream()
+                    .map(UserDefinedEntity::toUdo)
+                    .toList();
+            return Response.status(Response.Status.CREATED)
+                    .entity(createdUdos)
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (IllegalArgumentException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to validate object {} against schema. {}", type, e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("Failed to validate object against schema", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (AlreadyExistsException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to create UDO {}: {}", type, e.getMessage(), e);
+            return Response.status(Response.Status.CONFLICT)
+                    .entity(Map.of("UDO already exists", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (IOException e) {
+            LOGGER.error(OPENDIC_MARKER, "I/O error creating UDO {}: {}", type, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("I/O error", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (NotAuthorizedException e) {
+            LOGGER.error(OPENDIC_MARKER, "Not authorized to create UDO {}: {}", type, e.getMessage(), e);
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(Map.of("Not authorized", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
