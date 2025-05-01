@@ -195,13 +195,14 @@ public class IcebergRepository implements IBaseRepository {
         DataWriter<GenericRecord> dataWriter =
                 Parquet.writeData(file)
                         .schema(table.schema())
-                        .createWriterFunc(GenericParquetWriter::buildWriter)
+                        .createWriterFunc(GenericParquetWriter::create)
                         .overwrite()
                         .withSpec(PartitionSpec.unpartitioned())
                         .build();
 
         try (dataWriter) {
             for (GenericRecord record : records) {
+                recordWithUnameExistsCheck(identifier, record.getField("uname").toString(), "uname", record.getField("uname"));
                 dataWriter.write(record);
             }
             LOGGER.debug("Data written to file: {}", filepath);
@@ -222,10 +223,6 @@ public class IcebergRepository implements IBaseRepository {
 
     @Override
     public void insertRecord(Namespace namespace, String tableName, GenericRecord record) throws IOException {
-        var tableIdentifier = TableIdentifier.of(namespace, tableName);
-
-        //Precondition check
-        recordWithUnameExistsCheck(tableIdentifier, record.getField("uname").toString(), "uname", record.getField("uname"));
         insertRecords(namespace, tableName, List.of(record));
     }
 
@@ -409,6 +406,7 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     /**
+     * Check if a record with the given uname exists in the table. If yes, throw exception
      * Reference: <a href="https://www.tabular.io/blog/java-api-part-2/">https://www.tabular.io/blog/java-api-part-2</a>
      *
      * @param tableIdentifier full name of table. Example: {@code "SYSTEM.function" }
