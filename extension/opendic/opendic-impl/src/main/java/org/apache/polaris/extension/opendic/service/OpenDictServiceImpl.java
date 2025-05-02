@@ -55,6 +55,7 @@ import org.slf4j.MarkerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 /**
  * Concrete implementation of the Polaris API services
@@ -342,6 +343,12 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
             LOGGER.error(OPENDIC_MARKER, "Failed to update UDO {}: {}", createUdoRequest.getUdo().getName(), e.getMessage(), e);
             return Response.status(Response.Status.CONFLICT)
                     .entity(Map.of("UDO already exists", e.getMessage()))
+                    .type(MediaType.APPLICATION_JSON)
+                    .build();
+        } catch (NoSuchElementException e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to update UDO {}. No such element: {}", createUdoRequest.getUdo().getName(), e.getStackTrace());
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("No such element", "No such element"))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
