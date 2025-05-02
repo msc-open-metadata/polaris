@@ -181,13 +181,9 @@ public class IcebergRepository implements IBaseRepository {
      */
     @Override
     public void insertRecords(Namespace namespace, String tableName, List<GenericRecord> records) throws IOException {
-        LOGGER.info("Inserting records into table: {}.{}", namespace, tableName);
-
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
 
-        // Begin transaction.
-        Transaction tnx = table.newTransaction();
         // Create a temporary file for the new data
         String filepath = table.location() + "/" + UUID.randomUUID() + ".parquet";
         OutputFile file = table.io().newOutputFile(filepath);
@@ -214,11 +210,7 @@ public class IcebergRepository implements IBaseRepository {
             var nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
             unameCache.addUnameEntries(identifier, nameset);
         }
-        // End transaction.
-        tnx.newAppend().appendFile(dataFile).commit();
-        tnx.commitTransaction();
-
-        LOGGER.debug("Data appended to table: {}", tableName);
+        table.newAppend().appendFile(dataFile).commit();
     }
 
     @Override
@@ -385,15 +377,41 @@ public class IcebergRepository implements IBaseRepository {
             throw new NotFoundException("Record with %s == %s does not exist in table %s", idColumnName, idValue.toString(), identifier.toString());
         }
 
+        Expression keepFilter = Expressions.notEqual(idColumnName, idValue);
+        List<Record> recordsToKeep = readRecordsFiltered(table, keepFilter);
+
         Transaction tnx = table.newTransaction();
 
-        Expression deleteExpr = Expressions.equal(idColumnName, idValue);
-        tnx.newDelete().deleteFromRowFilter(deleteExpr).commit();
+        // Delete all data
+        tnx.newDelete().deleteFromRowFilter(Expressions.alwaysTrue()).commit();
+
+        // Reinsert if we have records to keep
+        if (!recordsToKeep.isEmpty()) {
+            String filepath = table.location() + "/" + UUID.randomUUID() + ".parquet";
+            OutputFile file = table.io().newOutputFile(filepath);
+
+            DataWriter<Record> dataWriter =
+                    Parquet.writeData(file)
+                            .schema(table.schema())
+                            .createWriterFunc(GenericParquetWriter::create)
+                            .overwrite()
+                            .withSpec(PartitionSpec.unpartitioned())
+                            .build();
+
+            try (dataWriter) {
+                for (Record record : recordsToKeep) {
+                    dataWriter.write(record);
+                }
+            }
+            DataFile dataFile = dataWriter.toDataFile();
+            table.newAppend().appendFile(dataFile).commit();
+        }
 
         if (IN_MEM_CACHE) {
             var cacheDeleted = unameCache.deleteUnameEntry(identifier, idValue.toString());
             assert cacheDeleted;
         }
+
         tnx.commitTransaction();
 
         LOGGER.debug("Deleted record with {} = {} from table: {}", idColumnName, idValue, tableName);
