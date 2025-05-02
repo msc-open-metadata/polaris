@@ -76,7 +76,7 @@ public class IcebergConfig {
                 OAuth2Properties.OAUTH2_SERVER_URI,
                 String.format("%s/api/catalog/v1/oauth/tokens", catalogType.basePath));
         conf.put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true");
-        conf.put(OAuth2Properties.TOKEN_EXPIRES_IN_MS, String.valueOf(86400000L)); // 24 hours in milliseconds
+        conf.put(OAuth2Properties.TOKEN_EXPIRES_IN_MS, String.valueOf(1_800_000L)); //30 min in milliseconds
 
         RESTCatalog catalog = new RESTCatalog();
         Configuration config = new Configuration();
