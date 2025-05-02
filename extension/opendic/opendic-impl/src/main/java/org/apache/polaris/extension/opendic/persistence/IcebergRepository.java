@@ -404,7 +404,7 @@ public class IcebergRepository implements IBaseRepository {
                 }
             }
             DataFile dataFile = dataWriter.toDataFile();
-            table.newAppend().appendFile(dataFile).commit();
+            tnx.newAppend().appendFile(dataFile).commit();
         }
 
         if (IN_MEM_CACHE) {
