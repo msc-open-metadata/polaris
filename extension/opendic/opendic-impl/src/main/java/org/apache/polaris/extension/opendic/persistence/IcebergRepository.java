@@ -1,6 +1,7 @@
 package org.apache.polaris.extension.opendic.persistence;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -25,6 +26,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.apache.polaris.extension.opendic.persistence.IcebergCatalogConfig.createRESTCatalog;
+import static org.apache.polaris.extension.opendic.persistence.IcebergCatalogConfig.readDockerSecret;
+
 /**
  * Repository for managing Iceberg tables and data operations using
  * the configured REST catalog from IcebergConfig.
@@ -32,8 +36,6 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
-    private static final String DEFAULT_CLIENT_ID_PATH = "engineer_client_id";
-    private static final String DEFAULT_CLIENT_SECRET_PATH = "engineer_client_secret";
 
     // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
     private static final boolean IN_MEM_CACHE = false;
@@ -43,27 +45,46 @@ public class IcebergRepository implements IBaseRepository {
     private final IUnameCache unameCache;
     private final RESTCatalog catalog;
     private final String catalogName;
+    private CatalogProvider catalogProvider;
 
     /**
      * Creates a repository with the default catalog
      */
-    public IcebergRepository() {
-        this(IcebergConfig.RESTCatalogType.FILE, DEFAULT_CLIENT_ID_PATH, DEFAULT_CLIENT_SECRET_PATH);
+    @Inject
+    public IcebergRepository(CatalogProvider catalogProvider) {
+        this.catalog = catalogProvider.getCatalog();
+        this.catalogName = catalogProvider.getCatalogType().toString();
+        LOGGER.info("Catalog {} created", catalogName);
+        if (IN_MEM_CACHE) {
+            Namespace systemNamespace = Namespace.of("SYSTEM");
+            Namespace platformMappingsNamespace = Namespace.of("SYSTEM", "PLATFORM_MAPPINGS");
+
+            if (!catalog.namespaceExists(systemNamespace)) {
+                catalog.createNamespace(systemNamespace);
+            }
+            if (!catalog.namespaceExists(platformMappingsNamespace)) {
+                catalog.createNamespace(platformMappingsNamespace);
+            }
+            try {
+                unameCache = loadCache(systemNamespace, platformMappingsNamespace);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            unameCache = new UnameCacheInMemory(new HashMap<>());
+        }
     }
 
-    /**
-     * Creates a repository with specific client credentials
-     */
-    public IcebergRepository(IcebergConfig.RESTCatalogType catalogType, String clientIdPath, String clientSecretPath) {
+    public IcebergRepository(IcebergCatalogConfig.RESTCatalogType catalogType, String clientIdPath, String clientSecretPath) {
         this.catalogName = catalogType.toString();
-        var clientId = IcebergConfig.readDockerSecret(clientIdPath);
-        var clientSecret = IcebergConfig.readDockerSecret(clientSecretPath);
+        var clientId = readDockerSecret(clientIdPath);
+        var clientSecret = readDockerSecret(clientSecretPath);
 
         // Credentials not available as docker secret mounts. Pass values directly.
         if (clientId == null || clientSecret == null) {
-            this.catalog = IcebergConfig.createRESTCatalog(catalogType, clientIdPath, clientSecretPath);
+            this.catalog = createRESTCatalog(catalogType, clientIdPath, clientSecretPath);
         } else {
-            this.catalog = IcebergConfig.createRESTCatalog(catalogType, clientId, clientSecret);
+            this.catalog = createRESTCatalog(catalogType, clientId, clientSecret);
         }
         LOGGER.info("Catalog {} created", catalogName);
         if (IN_MEM_CACHE) {
@@ -205,6 +226,8 @@ public class IcebergRepository implements IBaseRepository {
         }
 
         DataFile dataFile = dataWriter.toDataFile();
+
+        dataWriter.close();
 
         if (IN_MEM_CACHE) {
             var nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
@@ -404,6 +427,9 @@ public class IcebergRepository implements IBaseRepository {
                 }
             }
             DataFile dataFile = dataWriter.toDataFile();
+
+            dataWriter.close();
+
             tnx.newAppend().appendFile(dataFile).commit();
         }
 

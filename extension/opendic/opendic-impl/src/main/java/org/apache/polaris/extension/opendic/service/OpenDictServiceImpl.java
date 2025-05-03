@@ -71,6 +71,7 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     private final MetaStoreManagerFactory metaStoreManagerFactory;
     private final UserSecretsManagerFactory userSecretsManagerFactory;
     private final CallContext callContext;
+    private final IcebergRepository icebergRepository;
 
     @Inject
     public OpenDictServiceImpl(
@@ -78,13 +79,15 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
             MetaStoreManagerFactory metaStoreManagerFactory,
             UserSecretsManagerFactory userSecretsManagerFactory,
             PolarisAuthorizer polarisAuthorizer,
-            CallContext callContext
+            CallContext callContext,
+            IcebergRepository icebergRepository
     ) {
         this.entityManagerFactory = entityManagerFactory;
         this.metaStoreManagerFactory = metaStoreManagerFactory;
         this.userSecretsManagerFactory = userSecretsManagerFactory;
         this.polarisAuthorizer = polarisAuthorizer;
         this.callContext = callContext;
+        this.icebergRepository = icebergRepository;
         CallContext.setCurrentContext(callContext);
     }
 
@@ -103,7 +106,6 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
                 metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
         UserSecretsManager userSecretsManager =
                 userSecretsManagerFactory.getOrCreateUserSecretsManager(realmContext);
-        IBaseRepository icebergRepository = new IcebergRepository();
         IOpenDictDumpGenerator openDictDumpGenerator = new OpenDictSqlDumpGenerator();
         return new OpenDictService(
                 callContext,

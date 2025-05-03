@@ -62,7 +62,7 @@ class IcebergRepositoryTest {
         // Create instance of class containing the method
 
         // Call the method under test
-        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergCatalogConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
         GenericRecord record = icebergRepo.createGenericRecord(functionSchema, data);
 
         // Verify the result
@@ -87,7 +87,7 @@ class IcebergRepositoryTest {
                 Types.NestedField.required(7, "params", Types.MapType.ofRequired(1000, 1001, Types.StringType.get(), Types.StringType.get())
                 ));
 
-        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergCatalogConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
 
         String tablename = "andreas_function";
 
@@ -97,7 +97,7 @@ class IcebergRepositoryTest {
 
     @Test
     void testDropTable() {
-        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergCatalogConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
         String tablename = "andreas_function";
         var result = icebergRepo.dropTable(TEST_NAMESPACE, tablename);
         assertTrue(result);
@@ -131,7 +131,7 @@ class IcebergRepositoryTest {
 
 
         // Call the method under test
-        IBaseRepository icebergRepo = new IcebergRepository(IcebergConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
+        IBaseRepository icebergRepo = new IcebergRepository(IcebergCatalogConfig.RESTCatalogType.LOCAL_FILE, "root", "s3cr3t");
         GenericRecord record = icebergRepo.createGenericRecord(functionSchema, data);
 
         String tablename = "andreas_function";

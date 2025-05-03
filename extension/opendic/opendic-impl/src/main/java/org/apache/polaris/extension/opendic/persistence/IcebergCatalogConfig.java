@@ -32,8 +32,8 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-public class IcebergConfig {
-    private static final Logger LOGGER = LoggerFactory.getLogger(IcebergConfig.class);
+public class IcebergCatalogConfig {
+    private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogConfig.class);
 
     /**
      * Read a secret from Docker secret store
