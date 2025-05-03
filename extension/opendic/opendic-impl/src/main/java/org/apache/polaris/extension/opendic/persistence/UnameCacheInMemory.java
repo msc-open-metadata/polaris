@@ -23,11 +23,10 @@ import com.google.common.base.Preconditions;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 
 /**
@@ -40,6 +39,7 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
     public UnameCacheInMemory() {
         this(new HashMap<>());
     }
+    private static final Logger LOGGER = LoggerFactory.getLogger(UnameCacheInMemory.class);
 
     public UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) {
         this.unameCacheMap = unameCacheMap;
@@ -70,13 +70,10 @@ public record UnameCacheInMemory(Map<String, Set<String>> unameCacheMap) impleme
         }
 
         Set<String> existingUnames = unameCacheMap.get(fullTableName);
-        for (String uname : unames) {
-            if (existingUnames.contains(uname)) {
-                throw new AlreadyExistsException("Uname %s already exists in %s cache", uname, fullTableName);
-            }
+        if (!Collections.disjoint(existingUnames, unames)) {
+            throw new AlreadyExistsException("Uname in batch already exists in %s cache", fullTableName);
         }
         existingUnames.addAll(unames);
-
         unameCacheMap.put(fullTableName, existingUnames);
     }
 

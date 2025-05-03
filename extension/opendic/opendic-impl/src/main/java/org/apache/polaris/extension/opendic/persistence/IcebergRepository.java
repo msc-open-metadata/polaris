@@ -38,7 +38,7 @@ public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
 
     // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
-    private static final boolean IN_MEM_CACHE = false;
+    private static final boolean IN_MEM_CACHE = true;
     private static final long TARGET_FILE_SIZE_BYTES = 512 * 1024 * 1024L; // 512 MB
     private static final int SMALL_FILE_THRESHOLD = 50; // Max number of small files
     // Temp non-scalable solution to O(1) duplication checks.
@@ -229,7 +229,7 @@ public class IcebergRepository implements IBaseRepository {
         DataFile dataFile = dataWriter.toDataFile();
 
         if (IN_MEM_CACHE) {
-            var nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
+            Set<String> nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
             unameCache.addUnameEntries(identifier, nameset);
         }
         table.newAppend().appendFile(dataFile).commit();
@@ -566,7 +566,7 @@ public class IcebergRepository implements IBaseRepository {
     public boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws
             IOException {
         if (IN_MEM_CACHE) {
-            return unameCache.tableContainsUname(tableIdentifier, idColumnName);
+            return unameCache.tableContainsUname(tableIdentifier, idValue.toString());
         } else {
             Table table = catalog.loadTable(tableIdentifier);
             Expression idExpr = Expressions.equal(idColumnName, idValue);
