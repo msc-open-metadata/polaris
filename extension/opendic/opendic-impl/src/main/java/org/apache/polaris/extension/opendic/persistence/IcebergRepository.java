@@ -39,7 +39,8 @@ public class IcebergRepository implements IBaseRepository {
 
     // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
     private static final boolean IN_MEM_CACHE = false;
-
+    private static final long TARGET_FILE_SIZE_BYTES = 512 * 1024 * 1024L; // 512 MB
+    private static final int SMALL_FILE_THRESHOLD = 50; // Max number of small files
     // Temp non-scalable solution to O(1) duplication checks.
     // UDO/platform -> Set(existing names)
     private final IUnameCache unameCache;
@@ -234,6 +235,10 @@ public class IcebergRepository implements IBaseRepository {
             unameCache.addUnameEntries(identifier, nameset);
         }
         table.newAppend().appendFile(dataFile).commit();
+
+        if (shouldCompactFiles(table)) {
+            compactFiles(table);
+        }
     }
 
     @Override
@@ -271,6 +276,74 @@ public class IcebergRepository implements IBaseRepository {
         }
         HistoryEntry currentSnapshot = table.history().getLast();
         return currentSnapshot.timestampMillis();
+    }
+
+    /**
+     * Simple approach to compacting tables. Production implementation would implement ActionsProvider or use spark/flink implementations
+     * Note: Limitations: 1. Load data into memory. 2. Not atomic.
+     */
+    @Override
+    public void compactFiles(Table table) {
+        try {
+            LOGGER.info("Starting simple file compaction for table: {}", table.name());
+
+            // Read all records from the table
+            List<Record> allRecords = readRecords(table);
+            if (allRecords.isEmpty()) {
+                LOGGER.info("No records to compact in table: {}", table.name());
+                return;
+            }
+
+            // Start a transaction
+            Transaction tnx = table.newTransaction();
+
+            // Delete all existing data
+            LOGGER.debug("Deleting existing files from table: {}", table.name());
+            tnx.newDelete().deleteFromRowFilter(Expressions.alwaysTrue()).commit();
+
+            // Calculate batch size based on estimated record size and target file size
+            int recordCount = allRecords.size();
+            int estimatedRecordSize = 1024; // Rough estimate of record size in bytes
+            int batchSize = (int) Math.min(
+                    TARGET_FILE_SIZE_BYTES / estimatedRecordSize, recordCount); // Atleast recordcount
+
+            LOGGER.debug("Rewriting {} records in batches of {} for table: {}", recordCount, batchSize, table.name());
+
+            // Process records in batches of appropriate size
+            for (int i = 0; i < recordCount; i += batchSize) {
+                int end = Math.min(i + batchSize, recordCount); // We end at i+batch size or totalCount
+                List<Record> batch = allRecords.subList(i, end);
+
+                String filepath = table.location() + "/" + UUID.randomUUID() + ".parquet";
+                OutputFile file = table.io().newOutputFile(filepath);
+
+                DataWriter<Record> dataWriter = Parquet.writeData(file)
+                        .schema(table.schema())
+                        .createWriterFunc(GenericParquetWriter::create)
+                        .overwrite()
+                        .withSpec(PartitionSpec.unpartitioned())
+                        .build();
+
+                try (dataWriter) {
+                    for (Record record : batch) {
+                        dataWriter.write(record);
+                    }
+                    LOGGER.debug("Wrote batch of {} records to file: {}", batch.size(), filepath);
+                }
+
+                DataFile dataFile = dataWriter.toDataFile();
+                tnx.newAppend().appendFile(dataFile).commit();
+            }
+
+            // Commit the transaction
+            tnx.commitTransaction();
+            LOGGER.info("Completed file compaction for table: {}. Rewrote {} records into approximately {} files.",
+                    table.name(), recordCount, (int) Math.ceil((double) recordCount / batchSize));
+
+        } catch (IOException e) {
+            LOGGER.error("Failed to compact files for table {}: {}", table.name(), e.getMessage(), e);
+            throw new RuntimeException("Error during file compaction: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -490,6 +563,67 @@ public class IcebergRepository implements IBaseRepository {
         }
     }
 
+//    /**
+//     * Note: It is regrettable that we have to import the spark runtime to use these actions.
+//     * Reference: <a href="ttps://iceberg.apache.org/docs/1.8.1/maintenance/#compact-data-files">Ref</a>     *
+//     *
+//     * @param table the table to compact
+//     */
+//    @Override
+//    public void compactFiles(Table table) {
+//        var maxFileSizeBytes = 1024 * 1024 * 1024L; // 1024 MB
+//
+//        try {
+//            LOGGER.info("Starting file compaction for table: {}", table.name());
+//
+//            // Perform data file compaction with sorting. We use SparkActions so we dont have to implement our own
+//            SparkActions.get()
+//                    .rewriteDataFiles(table)
+//                    .options(Map.of(
+//                            "rewrite-data-files", "true",
+//                            "target-file-size-bytes", String.valueOf(TARGET_FILE_SIZE_BYTES),
+//                            "max-file-group-size-bytes", String.valueOf(maxFileSizeBytes))
+//                    )
+//                    .execute();
+//
+//            // Compact metadata manifests
+//            SparkActions
+//                    .get()
+//                    .rewriteManifests(table)
+//                    .rewriteIf(file -> file.length() < 10 * 1024 * 1024) // 10 MB
+//                    .execute();
+//
+//            // Remove orphaned files (files not referenced by the table metadata)
+//            SparkActions.get()
+//                    .deleteOrphanFiles(table)
+//                    .olderThan(System.currentTimeMillis() - (1000 * 60 * 20)) // 20 min
+//                    .execute();
+//
+//            LOGGER.info("Completed file compaction and cleanup for table: {}", table.name());
+//        } catch (Exception e) {
+//            LOGGER.error("Failed to compact files for table {}: {}", table.name(), e.getMessage(), e);
+//        }
+//    }
+
+
+    @Override
+    public boolean shouldCompactFiles(Table table) {
+        TableScan scan = table.newScan();
+        int smallFileCount = 0;
+        try (CloseableIterable<FileScanTask> planfiles = scan.planFiles()) {
+            for (FileScanTask fileTask : planfiles) {
+                DataFile file = fileTask.file();
+                if (file.fileSizeInBytes() < TARGET_FILE_SIZE_BYTES) { // 512 MB
+                    smallFileCount++;
+                }
+            }
+            LOGGER.info("Table {} has {} small files", table.name(), smallFileCount);
+            return smallFileCount > SMALL_FILE_THRESHOLD;
+        } catch (IOException e) {
+            throw new RuntimeException("Error assessing compaction needs: " + e.getMessage(), e);
+        }
+    }
+
 
     @Override
     public Schema readTableSchema(Namespace namespace, String tableName) {
@@ -518,4 +652,5 @@ public class IcebergRepository implements IBaseRepository {
     public String getCatalogName() {
         return catalogName;
     }
+
 }

@@ -118,6 +118,10 @@ public interface IBaseRepository {
 
     long getTableLastUpdateTime(TableIdentifier tableIdentifier);
 
+    void compactFiles(Table table);
+
+    boolean shouldCompactFiles(Table table);
+
     /**
      * Get the catalog instance
      */
