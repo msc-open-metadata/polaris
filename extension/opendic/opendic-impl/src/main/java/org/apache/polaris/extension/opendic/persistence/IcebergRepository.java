@@ -281,6 +281,7 @@ public class IcebergRepository implements IBaseRepository {
     /**
      * Simple approach to compacting tables. Production implementation would implement ActionsProvider or use spark/flink implementations
      * Note: Limitations: 1. Load data into memory. 2. Not atomic.
+     * Reference: <a href="https://iceberg.apache.org/docs/nightly/java-api-quickstart/#creating-branches-and-tags">...</a>
      */
     @Override
     public void compactFiles(Table table) {
@@ -297,9 +298,16 @@ public class IcebergRepository implements IBaseRepository {
             // Start a transaction
             Transaction tnx = table.newTransaction();
 
-            // Delete all existing data
-            LOGGER.debug("Deleting existing files from table: {}", table.name());
-            tnx.newDelete().deleteFromRowFilter(Expressions.alwaysTrue()).commit();
+            // Get scan files:
+            TableScan scan = table.newScan();
+            HashSet<DataFile> oldDataFiles = new HashSet<>();
+            try (CloseableIterable<FileScanTask> files = scan.planFiles()) {
+                // Collect all data files
+                for (FileScanTask fileTask : files) {
+                    DataFile file = fileTask.file();
+                    oldDataFiles.add(file);
+                }
+            }
 
             // Calculate batch size based on estimated record size and target file size
             int recordCount = allRecords.size();
@@ -309,12 +317,13 @@ public class IcebergRepository implements IBaseRepository {
 
             LOGGER.debug("Rewriting {} records in batches of {} for table: {}", recordCount, batchSize, table.name());
 
+            Set<DataFile> newFiles = new HashSet<>();
             // Process records in batches of appropriate size
             for (int i = 0; i < recordCount; i += batchSize) {
                 int end = Math.min(i + batchSize, recordCount); // We end at i+batch size or totalCount
                 List<Record> batch = allRecords.subList(i, end);
 
-                String filepath = table.location() + "/" + UUID.randomUUID() + ".parquet";
+                String filepath = table.location() + "/compacted-" + UUID.randomUUID() + ".parquet";
                 OutputFile file = table.io().newOutputFile(filepath);
 
                 DataWriter<Record> dataWriter = Parquet.writeData(file)
@@ -332,17 +341,40 @@ public class IcebergRepository implements IBaseRepository {
                 }
 
                 DataFile dataFile = dataWriter.toDataFile();
-                tnx.newAppend().appendFile(dataFile).commit();
+                newFiles.add(dataFile);
             }
+
+            // Replace old files
+            table.newRewrite().rewriteFiles(oldDataFiles, newFiles).commit();
 
             // Commit the transaction
             tnx.commitTransaction();
             LOGGER.info("Completed file compaction for table: {}. Rewrote {} records into approximately {} files.",
                     table.name(), recordCount, (int) Math.ceil((double) recordCount / batchSize));
 
+
+            cleanOrphanedFiles(table);
+
         } catch (IOException e) {
             LOGGER.error("Failed to compact files for table {}: {}", table.name(), e.getMessage(), e);
             throw new RuntimeException("Error during file compaction: " + e.getMessage(), e);
+        }
+    }
+
+    public void cleanOrphanedFiles(Table table) {
+        LOGGER.info("Starting snapshot cleanup for table: {}", table.name());
+
+        try {
+            // Clean up orphaned files
+            table.expireSnapshots()
+                    .cleanExpiredFiles(true)  // Remove expired data and manifest files
+                    .cleanExpiredMetadata(true) // Clean expired metadata files
+                    .commit();
+
+            LOGGER.info("Completed snapshot cleanup for table: {}", table.name());
+        } catch (Exception e) {
+            LOGGER.error("Failed to clean up snapshots for table {}: {}",
+                    table.name(), e.getMessage(), e);
         }
     }
 
@@ -403,7 +435,8 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public List<Record> readRecordsWithValInCol(Namespace namespace, String tableName, String col, Object val) throws IOException {
+    public List<Record> readRecordsWithValInCol(Namespace namespace, String tableName, String col, Object val) throws
+            IOException {
         TableIdentifier tableId = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(tableId);
         return readRecordsFiltered(table, Expressions.equal(col, val));
@@ -414,14 +447,16 @@ public class IcebergRepository implements IBaseRepository {
      * {@code idValue} == the value of that records idColumn. Example: readRecordWithId("SYSTEM", "function", "uname", "foo")
      */
     @Override
-    public Record readRecordWithId(Namespace namespace, String tableName, String idColumnName, Object idValue) throws IOException {
+    public Record readRecordWithId(Namespace namespace, String tableName, String idColumnName, Object idValue) throws
+            IOException {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
         return readRecordWithId(table, idColumnName, idValue);
     }
 
     @Override
-    public Record readRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException {
+    public Record readRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws
+            IOException {
         Table table = catalog.loadTable(tableIdentifier);
         return readRecordWithId(table, idColumnName, idValue);
     }
@@ -464,7 +499,8 @@ public class IcebergRepository implements IBaseRepository {
      * @param idValue      The value in id column of the record to delete. Example: "andfunc"
      */
     @Override
-    public void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue) throws IOException {
+    public void deleteSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue) throws
+            IOException {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
 
@@ -517,7 +553,8 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public void replaceSingleRecord(Namespace namespace, String tableName, String idColumnName, Object idValue, GenericRecord record) throws IOException {
+    public void replaceSingleRecord(Namespace namespace, String tableName, String idColumnName, Object
+            idValue, GenericRecord record) throws IOException {
         deleteSingleRecord(namespace, tableName, idColumnName, idValue);
         insertRecord(namespace, tableName, record);
     }
@@ -532,7 +569,8 @@ public class IcebergRepository implements IBaseRepository {
      * @param idValue         Example: "foo"
      */
     @Override
-    public void recordWithUnameExistsCheck(TableIdentifier tableIdentifier, String uname, String idColumnName, Object idValue) throws IOException {
+    public void recordWithUnameExistsCheck(TableIdentifier tableIdentifier, String uname, String
+            idColumnName, Object idValue) throws IOException {
         if (IN_MEM_CACHE) {
             unameCache.checkUnameDoesNotExist(tableIdentifier, uname);
         } else {
@@ -551,7 +589,8 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     @Override
-    public boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws IOException {
+    public boolean containsRecordWithId(TableIdentifier tableIdentifier, String idColumnName, Object idValue) throws
+            IOException {
         if (IN_MEM_CACHE) {
             return unameCache.tableContainsUname(tableIdentifier, idColumnName);
         } else {
