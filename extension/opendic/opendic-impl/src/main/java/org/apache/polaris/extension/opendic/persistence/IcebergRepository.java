@@ -228,8 +228,6 @@ public class IcebergRepository implements IBaseRepository {
 
         DataFile dataFile = dataWriter.toDataFile();
 
-        dataWriter.close();
-
         if (IN_MEM_CACHE) {
             var nameset = records.stream().map(genericRecord -> genericRecord.getField("uname").toString()).collect(Collectors.toSet());
             unameCache.addUnameEntries(identifier, nameset);
@@ -298,16 +296,9 @@ public class IcebergRepository implements IBaseRepository {
             // Start a transaction
             Transaction tnx = table.newTransaction();
 
-            // Get scan files:
-            TableScan scan = table.newScan();
-            HashSet<DataFile> oldDataFiles = new HashSet<>();
-            try (CloseableIterable<FileScanTask> files = scan.planFiles()) {
-                // Collect all data files
-                for (FileScanTask fileTask : files) {
-                    DataFile file = fileTask.file();
-                    oldDataFiles.add(file);
-                }
-            }
+            // Delete all existing data
+            LOGGER.debug("Deleting existing files from table: {}", table.name());
+            tnx.newDelete().deleteFromRowFilter(Expressions.alwaysTrue()).commit();
 
             // Calculate batch size based on estimated record size and target file size
             int recordCount = allRecords.size();
@@ -317,7 +308,6 @@ public class IcebergRepository implements IBaseRepository {
 
             LOGGER.debug("Rewriting {} records in batches of {} for table: {}", recordCount, batchSize, table.name());
 
-            Set<DataFile> newFiles = new HashSet<>();
             // Process records in batches of appropriate size
             for (int i = 0; i < recordCount; i += batchSize) {
                 int end = Math.min(i + batchSize, recordCount); // We end at i+batch size or totalCount
@@ -341,11 +331,8 @@ public class IcebergRepository implements IBaseRepository {
                 }
 
                 DataFile dataFile = dataWriter.toDataFile();
-                newFiles.add(dataFile);
+                tnx.newAppend().appendFile(dataFile).commit();
             }
-
-            // Replace old files
-            table.newRewrite().rewriteFiles(oldDataFiles, newFiles).commit();
 
             // Commit the transaction
             tnx.commitTransaction();
@@ -353,28 +340,15 @@ public class IcebergRepository implements IBaseRepository {
                     table.name(), recordCount, (int) Math.ceil((double) recordCount / batchSize));
 
 
-            cleanOrphanedFiles(table);
-
-        } catch (IOException e) {
-            LOGGER.error("Failed to compact files for table {}: {}", table.name(), e.getMessage(), e);
-            throw new RuntimeException("Error during file compaction: " + e.getMessage(), e);
-        }
-    }
-
-    public void cleanOrphanedFiles(Table table) {
-        LOGGER.info("Starting snapshot cleanup for table: {}", table.name());
-
-        try {
             // Clean up orphaned files
             table.expireSnapshots()
                     .cleanExpiredFiles(true)  // Remove expired data and manifest files
                     .cleanExpiredMetadata(true) // Clean expired metadata files
                     .commit();
 
-            LOGGER.info("Completed snapshot cleanup for table: {}", table.name());
-        } catch (Exception e) {
-            LOGGER.error("Failed to clean up snapshots for table {}: {}",
-                    table.name(), e.getMessage(), e);
+        } catch (IOException e) {
+            LOGGER.error("Failed to compact files for table {}: {}", table.name(), e.getMessage(), e);
+            throw new RuntimeException("Error during file compaction: " + e.getMessage(), e);
         }
     }
 
