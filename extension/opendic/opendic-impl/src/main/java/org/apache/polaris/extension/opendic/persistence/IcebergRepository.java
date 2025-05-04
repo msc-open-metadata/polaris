@@ -340,11 +340,15 @@ public class IcebergRepository implements IBaseRepository {
                     table.name(), recordCount, (int) Math.ceil((double) recordCount / batchSize));
 
 
+            var retentionTime = (1000 * 60); // 1 min
             // Clean up orphaned files
             table.expireSnapshots()
+                    .expireOlderThan(System.currentTimeMillis() - retentionTime) // 1 min
+                    .retainLast(1)                        // Only keep the most recent snapshot
                     .cleanExpiredFiles(true)  // Remove expired data and manifest files
                     .cleanExpiredMetadata(true) // Clean expired metadata files
                     .commit();
+
 
         } catch (IOException e) {
             LOGGER.error("Failed to compact files for table {}: {}", table.name(), e.getMessage(), e);
