@@ -44,7 +44,6 @@ import org.apache.polaris.extension.opendic.entity.UserDefinedEntity;
 import org.apache.polaris.extension.opendic.entity.UserDefinedEntitySchema;
 import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.model.*;
-import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.extension.opendic.persistence.IcebergRepository;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
@@ -164,16 +163,24 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         var deleted = adminService.deleteUdoOfType(type);
 
-        if (deleted) {
-            LOGGER.info(OPENDIC_MARKER, "Deleted type: {}", type);
-            return Response.status(Response.Status.OK)
-                    .entity(Map.of("Deleted all objects of type", type))
-                    .type(MediaType.APPLICATION_JSON)
-                    .build();
-        } else {
-            LOGGER.error(OPENDIC_MARKER, "Failed to delete type: {}", type);
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(Map.of("Failed to delete type. No such type", type))
+        try {
+            if (deleted) {
+                LOGGER.info(OPENDIC_MARKER, "Deleted UDO type: {}", type);
+                return Response.status(Response.Status.OK)
+                        .entity(Map.of("Deleted UDO type", type))
+                        .type(MediaType.APPLICATION_JSON)
+                        .build();
+            } else {
+                LOGGER.error(OPENDIC_MARKER, "Failed to delete UDO type: {}", type);
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(Map.of("No such UDO type", type))
+                        .type(MediaType.APPLICATION_JSON)
+                        .build();
+            }
+        } catch (Exception e) {
+            LOGGER.error(OPENDIC_MARKER, "Failed to delete UDO type {}: {}", type, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("Failed to delete UDO type", e.getMessage()))
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
@@ -188,7 +195,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      * @param request The request containing the UDO object to create (type, name, jsonprops)
      */
     @Override
-    public Response createUdo(String type, CreateUdoRequest request, RealmContext realmContext, SecurityContext securityContext
+    public Response createUdo(String type, CreateUdoRequest request, RealmContext realmContext, SecurityContext
+            securityContext
     ) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         Preconditions.checkNotNull(request.getUdo());
@@ -229,7 +237,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      * @param udos The list of UDO objects to create
      */
     @Override
-    public Response batchCreateUdo(String type, List<@Valid Udo> udos, RealmContext realmContext, SecurityContext securityContext) {
+    public Response batchCreateUdo(String type, List<@Valid Udo> udos, RealmContext
+            realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         Preconditions.checkNotNull(udos);
         LOGGER.info(OPENDIC_MARKER, "Batch creating {} open {}s", udos.size(), type);
@@ -322,7 +331,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      * @param createUdoRequest The request containing the updated UDO object
      */
     @Override
-    public Response updateUdo(String type, String objectName, CreateUdoRequest createUdoRequest, RealmContext realmContext, SecurityContext securityContext) {
+    public Response updateUdo(String type, String objectName, CreateUdoRequest createUdoRequest, RealmContext
+            realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         Preconditions.checkNotNull(createUdoRequest.getUdo());
         Preconditions.checkArgument(type.equals(createUdoRequest.getUdo().getType()), "Type in request does not match type in path");
@@ -384,7 +394,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      * @param platform the name of the platform
      */
     @Override
-    public Response getPlatformMappingForUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
+    public Response getPlatformMappingForUdo(String type, String platform, RealmContext
+            realmContext, SecurityContext securityContext) {
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         try {
             UserDefinedPlatformMapping platformMapping = adminService.getPlatformMapping(type, platform);
@@ -409,7 +420,8 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
      * @param platform the name of the platform
      */
     @Override
-    public Response pullUdo(String type, String platform, RealmContext realmContext, SecurityContext securityContext) {
+    public Response pullUdo(String type, String platform, RealmContext realmContext, SecurityContext
+            securityContext) {
         LOGGER.info(OPENDIC_MARKER, "Pulling UDO {} for platform {}", type, platform);
         OpenDictService adminService = newAdminService(realmContext, securityContext);
         try {

@@ -641,10 +641,12 @@ public class IcebergRepository implements IBaseRepository {
     }
 
     // Utility method: ---------------
+
     /**
      * Returns the count of all reachable (non-orphaned) files in the table,
      * including both data files and metadata files that are referenced by
      * the current table metadata.
+     *
      * @return A map containing counts of data files and metadata files
      */
     @Override
@@ -667,10 +669,10 @@ public class IcebergRepository implements IBaseRepository {
         }
 
         // Count metadata files (manifests)
-        Snapshot currentSnapshot = table.currentSnapshot();
-        if (currentSnapshot != null) {
-            metadataFileCount += currentSnapshot.allManifests(table.io()).size();
-            // Could add other metadata files like manifest lists, etc. if needed
+        for (var snapshot : table.snapshots()) {
+            if (snapshot != null) {
+                metadataFileCount += snapshot.allManifests(table.io()).size();
+            }
         }
 
         fileCounts.put("dataFiles", dataFileCount);
