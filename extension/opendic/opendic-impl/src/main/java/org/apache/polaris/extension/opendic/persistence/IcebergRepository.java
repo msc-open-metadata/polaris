@@ -38,7 +38,7 @@ public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
 
     // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
-    private static final boolean IN_MEM_CACHE = true;
+    private static final boolean IN_MEM_CACHE = false;
     private static final long TARGET_FILE_SIZE_BYTES = 512 * 1024 * 1024L; // 512 MB
     private static final int SMALL_FILE_THRESHOLD = 50; // Max number of small files
     // Temp non-scalable solution to O(1) duplication checks.
@@ -349,7 +349,6 @@ public class IcebergRepository implements IBaseRepository {
                     .cleanExpiredMetadata(true) // Clean expired metadata files
                     .commit();
 
-
         } catch (IOException e) {
             LOGGER.error("Failed to compact files for table {}: {}", table.name(), e.getMessage(), e);
             throw new RuntimeException("Error during file compaction: " + e.getMessage(), e);
@@ -639,6 +638,49 @@ public class IcebergRepository implements IBaseRepository {
         } catch (IOException e) {
             throw new RuntimeException("Error assessing compaction needs: " + e.getMessage(), e);
         }
+    }
+
+    // Utility method: ---------------
+    /**
+     * Returns the count of all reachable (non-orphaned) files in the table,
+     * including both data files and metadata files that are referenced by
+     * the current table metadata.
+     * @return A map containing counts of data files and metadata files
+     */
+    @Override
+    public Map<String, Integer> countReachableFiles(Namespace namespace, String tableName) {
+        TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+        Table table = catalog.loadTable(identifier);
+        Map<String, Integer> fileCounts = new HashMap<>();
+        int dataFileCount = 0;
+        int metadataFileCount = 0;
+
+        // Count data files
+        TableScan scan = table.newScan();
+        try (CloseableIterable<FileScanTask> fileTasks = scan.planFiles()) {
+            for (FileScanTask fileTask : fileTasks) {
+                dataFileCount++;
+            }
+        } catch (IOException e) {
+            LOGGER.error("Error counting data files for table {}: {}", table.name(), e.getMessage(), e);
+            throw new RuntimeException("Error counting data files: " + e.getMessage(), e);
+        }
+
+        // Count metadata files (manifests)
+        Snapshot currentSnapshot = table.currentSnapshot();
+        if (currentSnapshot != null) {
+            metadataFileCount += currentSnapshot.allManifests(table.io()).size();
+            // Could add other metadata files like manifest lists, etc. if needed
+        }
+
+        fileCounts.put("dataFiles", dataFileCount);
+        fileCounts.put("metadataFiles", metadataFileCount);
+        fileCounts.put("totalFiles", dataFileCount + metadataFileCount);
+
+        LOGGER.info("Table {} has {} data files and {} metadata files",
+                table.name(), dataFileCount, metadataFileCount);
+
+        return fileCounts;
     }
 
 

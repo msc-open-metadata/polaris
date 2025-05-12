@@ -81,6 +81,8 @@ public interface IBaseRepository {
      */
     boolean dropTable(Namespace namespace, String tableName);
 
+    Map<String, Integer> countReachableFiles(Namespace namespace, String tableName);
+
     /**
      * Get the schema of an table {@code namespace.tableName}
      */
@@ -103,6 +105,7 @@ public interface IBaseRepository {
 
     /**
      * Deletes and replaces an existing record.
+     *
      * @param tableName    The name of the table to delete from. Example: "function"
      * @param idColumnName The name of the ID column. Should be "uname"
      * @param idValue      The value in id column of the record to delete. Example: "foo"

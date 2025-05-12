@@ -37,7 +37,7 @@ public class CatalogProvider {
         this.catalogType = IcebergCatalogConfig.RESTCatalogType.FILE;
         // Initialize catalog once
         this.catalog = IcebergCatalogConfig.createRESTCatalog(
-                IcebergCatalogConfig.RESTCatalogType.FILE,
+                this.catalogType,
                 clientId != null ? clientId : DEFAULT_CLIENT_ID_PATH,
                 clientSecret != null ? clientSecret : DEFAULT_CLIENT_SECRET_PATH
         );

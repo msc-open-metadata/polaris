@@ -127,7 +127,9 @@ public class OpenDictService extends PolarisAdminService {
 
 
     public boolean deleteUdoOfType(String typeName) {
-        return icebergRepository.dropTable(NAMESPACE, typeName);
+        var dropped = icebergRepository.dropTable(NAMESPACE, typeName);
+        var reachableFiles = icebergRepository.countReachableFiles(NAMESPACE, typeName);
+        return dropped;
     }
 
 
