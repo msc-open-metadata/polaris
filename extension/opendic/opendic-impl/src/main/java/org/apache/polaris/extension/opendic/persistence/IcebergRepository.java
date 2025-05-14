@@ -654,34 +654,39 @@ public class IcebergRepository implements IBaseRepository {
         TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
         Table table = catalog.loadTable(identifier);
         Map<String, Integer> fileCounts = new HashMap<>();
-        int dataFileCount = 0;
-        int metadataFileCount = 0;
 
-        // Count data files
-        TableScan scan = table.newScan();
-        try (CloseableIterable<FileScanTask> fileTasks = scan.planFiles()) {
-            for (FileScanTask fileTask : fileTasks) {
-                dataFileCount++;
+        // Sets to track unique files. Multiple snapshots may point to the same file, so we make sure to not double count
+        Set<String> dataFilePaths = new HashSet<>();
+        Set<String> metadataFilePaths = new HashSet<>();
+
+        // Count files from each snapshot
+        for (Snapshot snapshot : table.snapshots()) {
+            if (snapshot == null) continue;
+
+            // Count metadata files (manifests) for this snapshot
+            for (ManifestFile manifest : snapshot.allManifests(table.io())) {
+                metadataFilePaths.add(manifest.path());
             }
-        } catch (IOException e) {
-            LOGGER.error("Error counting data files for table {}: {}", table.name(), e.getMessage(), e);
-            throw new RuntimeException("Error counting data files: " + e.getMessage(), e);
+
+            // Count data files for this snapshot
+            TableScan scan = table.newScan().useSnapshot(snapshot.snapshotId());
+            try (CloseableIterable<FileScanTask> fileTasks = scan.planFiles()) {
+                for (FileScanTask fileTask : fileTasks) {
+                    dataFilePaths.add(fileTask.file().path().toString());
+                }
+            } catch (IOException e) {
+                LOGGER.error("Error counting data files for snapshot {} of table {}: {}",
+                        snapshot.snapshotId(), table.name(), e.getMessage(), e);
+                throw new RuntimeException("Error counting data files: " + e.getMessage(), e);
+            }
         }
 
-        // Count metadata files (manifests)
-        for (var snapshot : table.snapshots()) {
-            if (snapshot != null) {
-                metadataFileCount += snapshot.allManifests(table.io()).size();
-            }
-        }
-
-        fileCounts.put("dataFiles", dataFileCount);
-        fileCounts.put("metadataFiles", metadataFileCount);
-        fileCounts.put("totalFiles", dataFileCount + metadataFileCount);
+        fileCounts.put("dataFiles", dataFilePaths.size());
+        fileCounts.put("metadataFiles", metadataFilePaths.size());
+        fileCounts.put("totalFiles", dataFilePaths.size() + metadataFilePaths.size());
 
         LOGGER.info("Table {} has {} data files and {} metadata files",
-                table.name(), dataFileCount, metadataFileCount);
-
+                table.name(), dataFilePaths.size(), metadataFilePaths.size());
         return fileCounts;
     }
 
