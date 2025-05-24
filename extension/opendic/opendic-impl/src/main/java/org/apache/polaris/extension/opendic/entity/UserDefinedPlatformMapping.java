@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
+ * Warning: Deprecated
  * Define platform-specific mappings for User Defined Objects (UDOs).
  * Enables translating an UDO into platform-specific syntax based on its type and properties.
  * Used to return 'dump' sql for synced UDOs.
