@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.apache.iceberg.TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED;
+import static org.apache.iceberg.TableProperties.METADATA_PREVIOUS_VERSIONS_MAX;
 import static org.apache.polaris.extension.opendic.persistence.IcebergCatalogConfig.createRESTCatalog;
 import static org.apache.polaris.extension.opendic.persistence.IcebergCatalogConfig.readDockerSecret;
 
@@ -38,7 +40,7 @@ public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
 
     // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
-    private static final boolean IN_MEM_CACHE = false;
+    private static final boolean IN_MEM_CACHE = true;
     private static final long TARGET_FILE_SIZE_BYTES = 512 * 1024 * 1024L; // 512 MB
     private static final int SMALL_FILE_THRESHOLD = 50; // Max number of small files
     // Temp non-scalable solution to O(1) duplication checks.
@@ -170,7 +172,9 @@ public class IcebergRepository implements IBaseRepository {
             throw new AlreadyExistsException("Type %s already exists with schema: %s", tableName, SchemaParser.toJson(table.schema()));
         }
         // Begin transaction.
-        Transaction tnx = catalog.newCreateTableTransaction(identifier, icebergSchema, PartitionSpec.unpartitioned());
+        Transaction tnx = catalog.newCreateTableTransaction(identifier, icebergSchema, PartitionSpec.unpartitioned(), Map.of(
+                METADATA_DELETE_AFTER_COMMIT_ENABLED, "true", METADATA_PREVIOUS_VERSIONS_MAX, "10"
+        ));
         if (IN_MEM_CACHE) {
             unameCache.addTable(identifier);
         }
@@ -644,10 +648,7 @@ public class IcebergRepository implements IBaseRepository {
 
     /**
      * Returns the count of all reachable (non-orphaned) files in the table,
-     * including both data files and metadata files that are referenced by
-     * the current table metadata.
-     *
-     * @return A map containing counts of data files and metadata files
+     * including both data files and metadata files that are referenced by the current table metadata.
      */
     @Override
     public Map<String, Integer> countReachableFiles(Namespace namespace, String tableName) {
