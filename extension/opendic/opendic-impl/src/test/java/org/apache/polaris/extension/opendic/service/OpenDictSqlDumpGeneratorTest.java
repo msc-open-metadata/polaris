@@ -81,9 +81,10 @@ class OpenDictSqlDumpGeneratorTest {
                 "   LANGUAGE <language>",
                 "   RUNTIME = <runtime>",
                 "   HANDLER = '<name>'",
-                "   AS $$",
-                "   <def>",
-                "   $$");
+                "   AS",
+                "$$",
+                "<def>",
+                "$$");
         String typeNameSimple = "function";
         String platformNameSimple = "snowflake";
         platformMappingSimple = UserDefinedPlatformMapping.builder().setTypeName(typeNameSimple)
@@ -98,9 +99,10 @@ class OpenDictSqlDumpGeneratorTest {
                 "   PACKAGES = (<packages>)",
                 "   RUNTIME = <runtime>",
                 "   HANDLER = '<name>'",
-                "   AS $$",
-                "   <def>",
-                "   $$");
+                "   AS",
+                "$$",
+                "<def>",
+                "$$;");
 
         Map<String, UserDefinedPlatformMapping.AdditionalSyntaxProps> additionalSyntaxPropsMap = Map.of(
                 "args", UserDefinedPlatformMapping.AdditionalSyntaxProps.builder()
@@ -156,10 +158,11 @@ class OpenDictSqlDumpGeneratorTest {
                         "   PACKAGES = ('numpy', 'pandas')",
                         "   RUNTIME = 3.10",
                         "   HANDLER = 'foo'",
-                        "   AS $$",
-                        "   def foo(arg1, arg2):",
+                        "   AS",
+                        "$$",
+                        "def foo(arg1, arg2):",
                         "       return arg1 + arg2",
-                        "   $$"
+                        "$$;"
                 )).build();
         var syntaxTupleList = platformMappingComplex.getSyntaxTupleList();
         Statement actual = openDictSqlDumpGenerator.entityDump(entitiesComplex.getFirst(),
