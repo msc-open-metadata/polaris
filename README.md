@@ -16,6 +16,25 @@
   specific language governing permissions and limitations
   under the License.
 -->
+# OpenDict Polaris fork
+
+This extension to the Apache Polaris catalog was developed at ITU as part of a Master thesis: _OpenDict: An Approach to Open Management of All Metadata Objects_.
+
+**Authors**: Andreas Kongstad & Carl Bruun
+
+**Purpose**: An extension to the Polaris catalog that implements the OpenDict specification allowing storage and management of user-defined metadata objects in data lake storage.
+
+## Overview
+The contribution tree below provides an overview over the our meaningful changes to the Polaris codebase. These are deliberately kept mostly in extension/OpenDic
+
+![alt text](<assets/Screenshot 2025-06-02 at 03.57.32.png>)
+
+### Examples
+
+![alt text](<assets/Screenshot 2025-06-02 at 03.31.13.png>)
+![alt text](<assets/Screenshot 2025-06-02 at 03.31.49.png>)
+![alt text](<assets/Screenshot 2025-06-02 at 03.33.47.png>)
+
 
 # Apache Polaris (incubating)
 
