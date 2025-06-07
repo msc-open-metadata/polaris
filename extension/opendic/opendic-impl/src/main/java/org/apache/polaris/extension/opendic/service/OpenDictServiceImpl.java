@@ -46,6 +46,7 @@ import org.apache.polaris.extension.opendic.entity.UserDefinedPlatformMapping;
 import org.apache.polaris.extension.opendic.model.*;
 import org.apache.polaris.extension.opendic.persistence.IcebergRepository;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -71,6 +72,7 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
     private final UserSecretsManagerFactory userSecretsManagerFactory;
     private final CallContext callContext;
     private final IcebergRepository icebergRepository;
+    private final ReservedProperties reservedProperties;
 
     @Inject
     public OpenDictServiceImpl(
@@ -79,13 +81,15 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
             UserSecretsManagerFactory userSecretsManagerFactory,
             PolarisAuthorizer polarisAuthorizer,
             CallContext callContext,
+            ReservedProperties reservedProperties,
             IcebergRepository icebergRepository
-    ) {
+            ) {
         this.entityManagerFactory = entityManagerFactory;
         this.metaStoreManagerFactory = metaStoreManagerFactory;
         this.userSecretsManagerFactory = userSecretsManagerFactory;
         this.polarisAuthorizer = polarisAuthorizer;
         this.callContext = callContext;
+        this.reservedProperties = reservedProperties;
         this.icebergRepository = icebergRepository;
         CallContext.setCurrentContext(callContext);
     }
@@ -113,6 +117,7 @@ public class OpenDictServiceImpl implements PolarisObjectsApiService, PolarisPla
                 userSecretsManager,
                 securityContext,
                 polarisAuthorizer,
+                reservedProperties,
                 icebergRepository,
                 openDictDumpGenerator);
     }

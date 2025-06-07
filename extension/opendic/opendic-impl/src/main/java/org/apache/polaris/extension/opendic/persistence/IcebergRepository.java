@@ -40,7 +40,7 @@ public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
 
     // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
-    private static final boolean IN_MEM_CACHE = true;
+    private static final boolean IN_MEM_CACHE = false;
     private static final long TARGET_FILE_SIZE_BYTES = 512 * 1024 * 1024L; // 512 MB
     private static final int SMALL_FILE_THRESHOLD = 50; // Max number of small files
     // Temp non-scalable solution to O(1) duplication checks.

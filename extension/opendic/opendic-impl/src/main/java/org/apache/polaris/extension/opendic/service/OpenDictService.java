@@ -41,6 +41,7 @@ import org.apache.polaris.extension.opendic.model.PlatformMappings;
 import org.apache.polaris.extension.opendic.model.Statement;
 import org.apache.polaris.extension.opendic.persistence.IBaseRepository;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.config.ReservedProperties;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -68,11 +69,11 @@ public class OpenDictService extends PolarisAdminService {
             @NotNull UserSecretsManager userSecretsManager,
             @NotNull SecurityContext securityContext,
             @NotNull PolarisAuthorizer authorizer,
-
+            @NotNull ReservedProperties reservedProperties,
             @NotNull IBaseRepository icebergRepository,
             @NotNull IOpenDictDumpGenerator openDictDumpGenerator
     ) {
-        super(callContext, entityManager, metaStoreManager, userSecretsManager, securityContext, authorizer);
+        super(callContext, entityManager, metaStoreManager, userSecretsManager, securityContext, authorizer, reservedProperties);
         this.icebergRepository = icebergRepository;
         this.openDictDumpGenerator = openDictDumpGenerator;
     }
