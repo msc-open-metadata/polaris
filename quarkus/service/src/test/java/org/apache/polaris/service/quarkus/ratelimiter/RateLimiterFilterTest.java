@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.ratelimiter;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
+import com.google.common.collect.ImmutableMap;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -31,6 +32,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.apache.polaris.service.events.BeforeRequestRateLimitedEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.quarkus.ratelimiter.RateLimiterFilterTest.Profile;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestFixture;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestHelper;
@@ -65,19 +69,21 @@ public class RateLimiterFilterTest {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.rate-limiter.filter.type",
-          "default",
-          "polaris.rate-limiter.token-bucket.type",
-          "default",
-          "polaris.rate-limiter.token-bucket.requests-per-second",
-          String.valueOf(REQUESTS_PER_SECOND),
-          "polaris.rate-limiter.token-bucket.window",
-          WINDOW.toString(),
-          "polaris.metrics.tags.environment",
-          "prod",
-          "polaris.realm-context.type",
-          "test");
+      return ImmutableMap.<String, String>builder()
+          .put("polaris.rate-limiter.filter.type", "default")
+          .put("polaris.rate-limiter.token-bucket.type", "default")
+          .put(
+              "polaris.rate-limiter.token-bucket.requests-per-second",
+              String.valueOf(REQUESTS_PER_SECOND))
+          .put("polaris.rate-limiter.token-bucket.window", WINDOW.toString())
+          .put("polaris.metrics.tags.environment", "prod")
+          .put("polaris.metrics.realm-id-tag.enable-in-api-metrics", "true")
+          .put("polaris.metrics.realm-id-tag.enable-in-http-metrics", "true")
+          .put("polaris.realm-context.type", "test")
+          .put("polaris.authentication.token-broker.type", "symmetric-key")
+          .put("polaris.authentication.token-broker.symmetric-key.secret", "secret")
+          .put("polaris.event-listener.type", "test")
+          .build();
     }
   }
 
@@ -86,6 +92,7 @@ public class RateLimiterFilterTest {
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
+  @Inject PolarisEventListener polarisEventListener;
 
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
@@ -140,6 +147,11 @@ public class RateLimiterFilterTest {
       requestAsserter.accept(Status.OK);
     }
     requestAsserter.accept(Status.TOO_MANY_REQUESTS);
+
+    BeforeRequestRateLimitedEvent event =
+        ((TestPolarisEventListener) polarisEventListener)
+            .getLatest(BeforeRequestRateLimitedEvent.class);
+    assertThat(event.method()).isEqualTo("GET");
 
     // Examples of expected metrics:
     // http_server_requests_seconds_count{application="Polaris",environment="prod",method="GET",outcome="CLIENT_ERROR",realm_id="org_apache_polaris_service_ratelimiter_RateLimiterFilterTest",status="429",uri="/api/management/v1/principal-roles"} 1.0

@@ -63,7 +63,10 @@ public class PostgresTestResourceLifecycleManager
     context.containerNetworkId().ifPresent(postgres::withNetworkMode);
     postgres.start();
     return Map.of(
-        "polaris.persistence.eclipselink.configuration-file", createPersistenceXml().toString());
+        "polaris.persistence.type",
+        "eclipse-link",
+        "polaris.persistence.eclipselink.configuration-file",
+        createPersistenceXml().toString());
   }
 
   @Override
@@ -98,13 +101,13 @@ public class PostgresTestResourceLifecycleManager
             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
             <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
               <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-              <class>org.apache.polaris.jpa.models.ModelEntity</class>
-              <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
-              <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
-              <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
-              <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
-              <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
-              <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
+              <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntity</class>
+              <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityActive</class>
+              <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityChangeTracking</class>
+              <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelEntityDropped</class>
+              <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelGrantRecord</class>
+              <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelPrincipalSecrets</class>
+              <class>org.apache.polaris.extension.persistence.impl.eclipselink.models.ModelSequenceId</class>
               <shared-cache-mode>NONE</shared-cache-mode>
               <properties>
                 <property name="jakarta.persistence.jdbc.url" value="%s"/>

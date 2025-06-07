@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 # coding: utf-8
 
 """
@@ -243,7 +244,7 @@ class RESTClientObject:
                         headers=headers,
                         preload_content=False
                     )
-                elif headers['Content-Type'] == 'text/plain' and isinstance(body, bool):
+                elif headers['Content-Type'].startswith('text/') and isinstance(body, bool):
                     request_body = "true" if body else "false"
                     r = self.pool_manager.request(
                         method,
