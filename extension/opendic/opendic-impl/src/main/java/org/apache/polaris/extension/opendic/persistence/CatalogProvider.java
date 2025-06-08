@@ -34,7 +34,7 @@ public class CatalogProvider {
     public CatalogProvider() {
         String clientId = IcebergCatalogConfig.readDockerSecret(DEFAULT_CLIENT_ID_PATH);
         String clientSecret = IcebergCatalogConfig.readDockerSecret(DEFAULT_CLIENT_SECRET_PATH);
-        this.catalogType = IcebergCatalogConfig.RESTCatalogType.FILE;
+        this.catalogType = IcebergCatalogConfig.RESTCatalogType.ADLS;
         // Initialize catalog once
         this.catalog = IcebergCatalogConfig.createRESTCatalog(
                 this.catalogType,
