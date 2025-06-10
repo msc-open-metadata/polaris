@@ -192,7 +192,6 @@ public record UserDefinedPlatformMapping(String typeName,
      * Get a list tuples container a substring of the syntax followed by a replacement value to allow for efficient dump generation and value replacement.
      */
     public List<SyntaxTuple> getSyntaxTupleList() {
-        // Use a list because we want to preserve insertion order and allow for duplicates.
         List<SyntaxTuple> syntaxList = new ArrayList<>();
 
         // Match any word with the pattern: <word>
@@ -208,7 +207,7 @@ public record UserDefinedPlatformMapping(String typeName,
             lastMatchIdx = matcher.end();
         }
 
-        // Collect suffix
+        // Collect final suffix
         String suffix = templateSyntax.substring(lastMatchIdx);
         syntaxList.add(new SyntaxTuple(suffix, ""));
 

@@ -39,13 +39,10 @@ import static org.apache.polaris.extension.opendic.persistence.IcebergCatalogCon
 public class IcebergRepository implements IBaseRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(IcebergRepository.class);
 
-    // Note. For now, if cache is turned off. Existence checks on records are not performed -> duplicates are allowed.
     private static final boolean IN_MEM_CACHE = false;
-    private static final long TARGET_FILE_SIZE_BYTES = 512 * 1024 * 1024L; // 512 MB
-    private static final int SMALL_FILE_THRESHOLD = 50; // Max number of small files
-    // Temp non-scalable solution to O(1) duplication checks.
-    // UDO/platform -> Set(existing names)
-    private final IUnameCache unameCache;
+    private static final long TARGET_FILE_SIZE_BYTES = 512 * 1024 * 1024L; // Magic target file size: 512 MB
+    private static final int SMALL_FILE_THRESHOLD = 50; //  Magic small files threshold
+    private final IUnameCache unameCache; // Temp non-scalable solution to O(1) duplication checks.
     private final RESTCatalog catalog;
     private final String catalogName;
     private CatalogProvider catalogProvider;
@@ -297,7 +294,6 @@ public class IcebergRepository implements IBaseRepository {
                 return;
             }
 
-            // Start a transaction
             Transaction tnx = table.newTransaction();
 
             // Delete all existing data
@@ -306,7 +302,7 @@ public class IcebergRepository implements IBaseRepository {
 
             // Calculate batch size based on estimated record size and target file size
             int recordCount = allRecords.size();
-            int estimatedRecordSize = 1024; // Rough estimate of record size in bytes
+            int estimatedRecordSize = 1024; // Magic estimate of record size.
             int batchSize = (int) Math.min(
                     TARGET_FILE_SIZE_BYTES / estimatedRecordSize, recordCount); // Atleast recordcount
 
@@ -314,7 +310,7 @@ public class IcebergRepository implements IBaseRepository {
 
             // Process records in batches of appropriate size
             for (int i = 0; i < recordCount; i += batchSize) {
-                int end = Math.min(i + batchSize, recordCount); // We end at i+batch size or totalCount
+                int end = Math.min(i + batchSize, recordCount); // End at i+batch size or totalCount
                 List<Record> batch = allRecords.subList(i, end);
 
                 String filepath = table.location() + "/compacted-" + UUID.randomUUID() + ".parquet";
@@ -348,7 +344,7 @@ public class IcebergRepository implements IBaseRepository {
             // Clean up orphaned files
             table.expireSnapshots()
                     .expireOlderThan(System.currentTimeMillis() - retentionTime) // 1 min
-                    .retainLast(1)                        // Only keep the most recent snapshot
+                    .retainLast(1)
                     .cleanExpiredFiles(true)  // Remove expired data and manifest files
                     .cleanExpiredMetadata(true) // Clean expired metadata files
                     .commit();
@@ -494,7 +490,7 @@ public class IcebergRepository implements IBaseRepository {
         List<Record> recordsToKeep = readRecordsFiltered(table, keepFilter);
 
         Transaction tnx = table.newTransaction();
-
+//        table.newRowDelta().addDeletes().addRows()
         // Delete all data
         tnx.newDelete().deleteFromRowFilter(Expressions.alwaysTrue()).commit();
 
@@ -643,8 +639,6 @@ public class IcebergRepository implements IBaseRepository {
             throw new RuntimeException("Error assessing compaction needs: " + e.getMessage(), e);
         }
     }
-
-    // Utility method: ---------------
 
     /**
      * Returns the count of all reachable (non-orphaned) files in the table,

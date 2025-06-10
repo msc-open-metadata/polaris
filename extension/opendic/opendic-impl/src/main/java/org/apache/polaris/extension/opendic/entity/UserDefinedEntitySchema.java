@@ -86,7 +86,6 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         if (propMap == null) {
             return result;
         }
-
         for (Map.Entry<String, String> entry : propMap.entrySet()) {
             String propName = entry.getKey();
             String typeStr = entry.getValue();
@@ -99,10 +98,7 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         return result;
     }
 
-    public static UserDefinedEntitySchema fromTableSchema(org.apache.iceberg.Schema icebergSchema, String typeName,
-                                                          long createdTimeStamp,
-                                                          long lastUpdatedTimeStamp,
-                                                          int entityVersion) {
+    public static UserDefinedEntitySchema fromTableSchema(org.apache.iceberg.Schema icebergSchema, String typeName, long createdTimeStamp, long lastUpdatedTimeStamp, int entityVersion) {
         return UserDefinedEntitySchema.fromTableSchema(
                 AvroSchemaUtil.convert(icebergSchema, typeName),
                 createdTimeStamp,
@@ -151,47 +147,6 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
             case "map", "object", "variant" -> PropertyType.VARIANT;
             default -> PropertyType.STRING; // Default to STRING for unknown types
         };
-    }
-
-    /**
-     * Generate an Avro schema from a UserDefinedEntityType
-     *
-     * @return An Avro Schema representing the entity type
-     */
-    public Schema getAvroSchema() {
-        LOGGER.debug("Getting Avro Schema for {}", typeName);
-
-        SchemaBuilder.RecordBuilder<Schema> recordBuilder = SchemaBuilder
-                .record(typeName)
-                .namespace("org.apache.polaris.extension.opendic.entity");
-
-        SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
-        // Add the name of the object and the object
-        fieldAssembler
-                .name("uname")
-                .type().stringType()
-                .noDefault();
-
-
-        // Add each property as a field
-        for (Map.Entry<String, UserDefinedEntitySchema.PropertyType> entry :
-                propertyDefinitions.entrySet()) {
-
-            String propName = entry.getKey();
-            UserDefinedEntitySchema.PropertyType propType = entry.getValue();
-
-            // Add the field with appropriate type
-            addField(fieldAssembler, propName, propType);
-        }
-        // Add default fields
-        fieldAssembler.name("created_time").type().unionOf().nullType().and()
-                .stringType().endUnion()
-                .noDefault();
-        fieldAssembler.name("last_updated_time").type().unionOf().nullType().and()
-                .stringType().endUnion()
-                .noDefault();
-        fieldAssembler.name("entity_version").type().unionOf().nullType().and().intType().endUnion().noDefault();
-        return fieldAssembler.endRecord();
     }
 
     /**
@@ -265,13 +220,48 @@ public record UserDefinedEntitySchema(String typeName, Map<String, PropertyType>
         }
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Generate an Avro schema from a UserDefinedEntityType
+     *
+     * @return An Avro Schema representing the entity type
+     */
+    public Schema getAvroSchema() {
+        LOGGER.debug("Getting Avro Schema for {}", typeName);
+        SchemaBuilder.RecordBuilder<Schema> recordBuilder = SchemaBuilder
+                .record(typeName)
+                .namespace("org.apache.polaris.extension.opendic.entity");
+        SchemaBuilder.FieldAssembler<Schema> fieldAssembler = recordBuilder.fields();
+        fieldAssembler
+                .name("uname")
+                .type().stringType()
+                .noDefault();
+
+        // Add each property as a field
+        for (Map.Entry<String, UserDefinedEntitySchema.PropertyType> entry :
+                propertyDefinitions.entrySet()) {
+
+            String propName = entry.getKey();
+            UserDefinedEntitySchema.PropertyType propType = entry.getValue();
+            addField(fieldAssembler, propName, propType);
+        }
+        // Add default fields
+        fieldAssembler.name("created_time").type().unionOf().nullType().and()
+                .stringType().endUnion()
+                .noDefault();
+        fieldAssembler.name("last_updated_time").type().unionOf().nullType().and()
+                .stringType().endUnion()
+                .noDefault();
+        fieldAssembler.name("entity_version").type().unionOf().nullType().and().intType().endUnion().noDefault();
+        return fieldAssembler.endRecord();
+    }
+
     public org.apache.iceberg.Schema getIcebergSchema() {
         var avroSchema = getAvroSchema();
         return AvroSchemaUtil.toIceberg(avroSchema);
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 
     public UdoSchema toUdoSchema() {
