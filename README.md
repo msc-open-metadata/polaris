@@ -6,9 +6,9 @@
   to you under the Apache License, Version 2.0 (the
   "License"); you may not use this file except in compliance
   with the License.  You may obtain a copy of the License at
- 
+
    http://www.apache.org/licenses/LICENSE-2.0
- 
+
   Unless required by applicable law or agreed to in writing,
   software distributed under the License is distributed on an
   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -29,16 +29,14 @@ The contribution tree below provides an overview over the our meaningful changes
 
 ![alt text](<assets/Screenshot 2025-06-02 at 03.57.32.png>)
 
-### Examples
-
-![alt text](<assets/Screenshot 2025-06-02 at 03.31.13.png>)
-![alt text](<assets/Screenshot 2025-06-02 at 03.31.49.png>)
-![alt text](<assets/Screenshot 2025-06-02 at 03.33.47.png>)
-
+### Demo
+[Full demo](https://www.youtube.com/watch?v=OLFZZZAcOqQ)
+![alt text](<assets/demo-scenario.gif>)
+![alt text](<assets/demo-demo.gif>)
 
 # Apache Polaris (incubating)
 
-Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
+Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
 enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®,
 Apache Spark™, StarRocks, and Trino.
@@ -61,7 +59,7 @@ Click [here](https://polaris.apache.org/in-dev/unreleased/overview/) for a quick
 ## Quickstart
 Click [here](https://polaris.apache.org/in-dev/unreleased/getting-started/install-dependencies/) for the quickstart experience, which will help you set up a Polaris instance locally or on any supported cloud provider.
 
-## Building and Running 
+## Building and Running
 
 Apache Polaris is organized into the following modules:
 
@@ -80,7 +78,7 @@ Apache Polaris is organized into the following modules:
 - Persistence modules:
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
   - `polaris-relational-jdbc` - The JDBC implementation of BasePersistence to be used via AtomicMetaStoreManager
- 
+
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
@@ -118,10 +116,10 @@ using different configurations. Check the `./getting-started` directory for more
 
 #### Running in Kubernetes
 
-- `./run.sh` - To run Polaris as a mini-deployment locally. This will create a Kind cluster, 
+- `./run.sh` - To run Polaris as a mini-deployment locally. This will create a Kind cluster,
   then deploy one pod and one service. The service is available on ports `8181` and `8182`.
-- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure 
-  connections between a local machine and a pod within the cluster for both service and 
+- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure
+  connections between a local machine and a pod within the cluster for both service and
   health/metrics endpoints:
   - http://localhost:8182/q/metrics
   - http://localhost:8182/q/health
@@ -153,5 +151,5 @@ Apache Polaris is under the Apache License Version 2.0. See the [LICENSE](LICENS
 ## ASF Incubator disclaimer
 
 Apache Polaris&trade; is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
- 
+
 <sub>Apache&reg;, Apache Polaris&trade;, Apache Iceberg&trade;, Apache Spark&trade; are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.</sub>
